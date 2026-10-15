@@ -1,0 +1,52 @@
+{
+  "_comment": [
+    "Project-name mappings. A group lists spellings that all mean THE SAME project.",
+    "",
+    "'groups'     - used by BOTH matchers: the forgiving one (Red Flag row, Tracker row, approvals",
+    "               sheet lookup, config lookups) and the strict one (Key Focus Area).",
+    "'strictOnly' - used by the STRICT matcher ONLY, i.e. Key Focus Area.",
+    "",
+    "Why the split: the forgiving matcher joins a name to a group when it shares one word with any",
+    "member. Putting 'Madakuhosahalli' in a shared group with 'Nandi Hills [MH]' would therefore have",
+    "made it a 100% match for 'Nandi Hills [Sult]' and 'Nandi Hills [Ach]' as well, because those",
+    "share the words 'Nandi' and 'Hills'. The strict matcher requires EXACT membership, so the same",
+    "entry is safe there. Declare a new Key Focus mapping under 'strictOnly' unless the forgiving",
+    "matcher genuinely needs it too.",
+    "",
+    "Key Focus Area matching order: exact project code -> exact project name -> exact alias listed",
+    "here -> the record is EXCLUDED. There is no partial, keyword or fuzzy matching."
+  ],
+
+  "groups": [
+    ["Shreegoan", "Poinciana", "ShreeGaon", "Shreegaon"]
+  ],
+
+  "strictOnly": [
+    [
+      "Nandi Hills [MH]",
+      "Nandi Hills Madakuhosahalli",
+      "Madakuhosahalli",
+      "Nandi Hills MH",
+      "Nandi Hills [Madakuhosahalli]"
+    ],
+    [
+      "TR Mills - Chamrajpet",
+      "TR Mills - Chamrajpete",
+      "TR Mills Chamrajpet",
+      "TR Mills Chamrajpete",
+      "TR Mills"
+    ],
+    [
+      "TMFT Phase 3",
+      "TMFT- Ph 3",
+      "TMFT Ph3",
+      "TMFT Ph 3"
+    ],
+    [
+      "ItQE Ph 2c & 3a [T9, 10,11,12 & 31 Villas]",
+      "ITQE Phase 2c & 3a [T 9-12 & 31 Villas]",
+      "ItQE Ph 2c & 3a",
+      "ITQE Phase 2c & 3a"
+    ]
+  ]
+}

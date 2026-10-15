@@ -1,0 +1,30 @@
+REQUIREMENTS
+============
+
+REQUIRED
+  Windows 10 or 11 (64-bit)
+  Node.js LTS, version 18 or newer      https://nodejs.org   (free)
+        Verified on Node.js v22.23.2.
+        Install the "LTS" download and accept the defaults.
+
+  Nothing else. Every package the application needs is already inside this folder,
+  so there is no install step and no internet connection is needed to run it.
+
+
+OPTIONAL
+  Microsoft PowerPoint       to open, edit and present the generated deck.
+  The approved fonts         in the fonts\ folder — install them on any machine that
+                             will open the deck, or PowerPoint substitutes another
+                             typeface and the layout shifts.
+                             Right-click each file, then Install.
+
+
+NOT REQUIRED
+  You do NOT need Python, Git, Docker, Visual Studio, TypeScript, Microsoft Excel,
+  an ASTA licence, or any developer tool. The application reads the Excel export as a
+  file; it does not drive Excel.
+
+
+DISK AND MEMORY
+  About 50 MB extracted.
+  Any machine that runs Windows 10 comfortably will run this.

@@ -1,0 +1,20 @@
+# Dependencies - reinstalled with `npm install` in backend/
+node_modules/
+
+# Generated decks and uploaded schedule files (project data, large)
+storage/generated/*
+storage/uploads/*
+!storage/generated/.gitkeep
+!storage/uploads/.gitkeep
+
+# Local sharing password - copy sharing.example.json to sharing.json
+sharing.json
+
+# Tunnel binary - SHARE.bat downloads it
+cloudflared.exe
+
+# OS / editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.log

@@ -1,0 +1,470 @@
+================================================================================
+EDOS WEEKLY REVIEW CLOUD
+DESIGN & BUILD - HOW EVERY NUMBER, DATE AND COLOUR IS DECIDED
+================================================================================
+
+This file covers the DESIGN & BUILD project type ONLY.
+
+Launch & Design is a different report with different rules; it is described in
+EDOS_PPT_LOGIC_GUIDE.txt. Where the two share a renderer that is said so
+explicitly, together with what Design & Build asks it to do differently.
+
+Written so that anybody can check a generated deck against the source files
+without reading code. Every rule below names the file and the column it reads.
+
+--------------------------------------------------------------------------------
+CONTENTS
+--------------------------------------------------------------------------------
+   1.  What goes in, what comes out
+   1b. Which worksheet is read  (read this if a date looks wrong)
+   2.  Finding the project, and the contamination guard
+   3.  Design and Construction branches
+   4.  THE DURATION COLUMNS - the rule that caused the most trouble
+   5.  Project Overview - which rows
+   6.  Project Overview - every column, and where its value comes from
+   7.  Project Overview - colours and the nesting bars
+   8.  Project Overview - the Gantt
+   9.  Red Flag Summary
+  10.  Key Focus Area
+  11.  Tracker & Schedule (3A) and Schedule - Construction (3B)
+  12.  Legends
+  13.  2 Week Look Ahead
+  14.  Section numbering and Contents
+  15.  What is NEVER done
+  16.  Checking a deck against the export
+
+
+--------------------------------------------------------------------------------
+1. WHAT GOES IN, WHAT COMES OUT
+--------------------------------------------------------------------------------
+
+INPUT
+  Excel export view ........ REQUIRED. ONE file. Both the Design and the
+                             Construction work are read from inside it. EDOS
+                             does not ask for a second schedule file.
+  Summary Dashboard ........ The "Design & Build" dashboard workbook. Without it
+                             the Red Flag Summary, Key Focus Area and
+                             Tracker & Schedule sections cannot be built and are
+                             left out of the deck AND out of the Contents. The
+                             rest of the deck still generates.
+  Previous Weekly PPT ...... Supplies the cover and the Site Progress pages,
+                             which cannot be regenerated from data.
+
+OUTPUT SECTIONS, in deck order
+  1  Red Flag Summary                  dashboard
+  2  Key Focus Area                    dashboard
+  3  Tracker & Schedule                dashboard          (3A, and 3B when the
+     Schedule - Construction                               dashboard has painted
+                                                           construction months)
+  4  Project Overview                  Excel export
+     Project Overview - Construction   Excel export
+  5  2 Week Look Ahead                 Excel export
+     Site Progress                     previous deck
+
+  THERE IS NEVER AN APPROVALS STATUS PAGE. That is deliberate, not an omission:
+  Design & Build projects do not report one. There is also no Land Acquisition
+  page and no Master Plan page.
+
+
+--------------------------------------------------------------------------------
+1b. WHICH WORKSHEET IS READ  (read this if a date looks wrong)
+--------------------------------------------------------------------------------
+
+An export workbook can contain more than one sheet, and some do - including a
+HIDDEN sheet left over from an earlier run, carrying the same headings and
+nearly the same number of rows as the live one.
+
+EDOS picks the sheet in this order:
+
+   1. VISIBLE sheets first. A hidden sheet is one somebody put away; it cannot
+      be the sheet a reader is checking a date against.
+   2. Among those, the first that LOOKS LIKE A SCHEDULE - it has a "Name"
+      column plus at least one of the date columns - so a notes or lookup tab
+      sitting in front of the data is skipped.
+   3. If no visible sheet qualifies, the first qualifying hidden one, so a
+      workbook whose only data sheet happens to be hidden still works.
+   4. Failing all of that, the first sheet.
+
+WHICH SHEET WAS USED IS PRINTED IN generation.log, e.g.
+
+   Excel export view: read "Sheet2" (visible, 366 rows) - the first VISIBLE
+   sheet carrying schedule columns; ignored "Sheet1" (hidden, 367 rows)
+
+This matters more than it sounds. NH Homestay's workbook holds a stale hidden
+"Sheet1" beside the live "Sheet2". EDOS used to take the first sheet in the
+file, which was the hidden one, so every date on the deck came from a sheet
+nobody could open - the project finished 05-Nov-27 on the slide against
+02-Nov-27 in the file, and Design 17-Nov-26 against 07-Oct-27. Both sheets were
+real exports, so nothing downstream could tell they were the wrong ones.
+
+IF A DATE STILL LOOKS WRONG, CHECK generation.log FIRST. It names both the file
+and the sheet.
+
+
+--------------------------------------------------------------------------------
+2. FINDING THE PROJECT, AND THE CONTAMINATION GUARD
+--------------------------------------------------------------------------------
+
+The project is resolved FROM THE DATA, never from what is typed in the box.
+
+  - The export's own project row names it, e.g. "0131 | Nandi Hills Homestay".
+    A code embedded in that name is used as the project code.
+  - A code typed on the page is only ever used to CHOOSE between projects when
+    the source genuinely holds more than one. It cannot rename or re-point the
+    deck.
+  - Every section records which project's rows it used. If any section ends up
+    carrying a different project from the rest, GENERATION FAILS with a report
+    naming the section and both projects. A deck is never produced with one
+    project's Key Focus beside another project's schedule.
+
+
+--------------------------------------------------------------------------------
+3. DESIGN AND CONSTRUCTION BRANCHES
+--------------------------------------------------------------------------------
+
+  - EDOS finds the project row, then looks at its DIRECT CHILDREN only.
+  - A child whose name starts or ends with "Design" is the design branch.
+  - A child whose name starts or ends with "Construction" is the construction
+    branch.
+  - "Pre-Construction", "Construction Documents" and similar are deliberately
+    NOT treated as the construction branch - they are ordinary work inside
+    Design.
+  - Only one branch of each kind is used. A second is ignored and noted in the
+    validation report.
+
+WHAT THAT PRODUCES
+  - BOTH branches present -> two Project Overview slides, "Project Overview"
+    (from Design) and "Project Overview - Construction" (from Construction).
+  - ONE branch, or none recognised -> a single slide over the whole project
+    tree, titled from that branch. This is not a shortcut: Meena's export keeps
+    "Master Archives [LOD 500]" as a SIBLING of Design, and its reference slide
+    shows that row. Scoping to the branch would silently drop it.
+
+
+--------------------------------------------------------------------------------
+4. THE DURATION COLUMNS - THE RULE THAT CAUSED THE MOST TROUBLE
+--------------------------------------------------------------------------------
+
+READ THIS SECTION BEFORE REPORTING A WRONG NUMBER.
+
+ASTA can export duration under two different headings, and different export
+views carry different ones:
+
+      "Duration"                 counted in the task's WORKING time
+      "Duration [Elapsed day]"   counted in CALENDAR days
+      "Duration remaining"       NEITHER - it is work left to do
+
+Measured across the export files on hand:
+      most shapes          "Duration" + "Duration remaining"
+      NH Homestay          "Duration [Elapsed day]" + "Duration remaining",
+                           and NO plain "Duration" column at all
+
+RULES
+  a) "Duration remaining" is NEVER read as a duration. A completed task has
+     "0d" remaining, and reading that as a zero duration would mark every
+     finished task a milestone.
+  b) The plain "Duration" column is used when the export has one.
+  c) If it does not, "Duration [Elapsed day]" IS that export's duration and is
+     read as such. (Before this rule existed, such an export produced a
+     duration of 0 on every row, which made every row look like a milestone,
+     emptied the Custom branch picker, and blanked both duration columns on the
+     Project Overview.)
+  d) The Project Overview's "Duration [Elapsed day]" column PRINTS THE EXPORT'S
+     OWN FIGURE, rounded once for display: 941.67ed in the export prints 942ed.
+     It is NOT recalculated from the start and finish dates. It used to be, and
+     the two disagreed on 11 of 13 rows for NH Homestay - Design read 588.31ed
+     in the export and printed 589ed, Master Archives read 7 and printed 8.
+  e) "Duration [Elapsed Month]" is that same figure divided by 30.4375. It is a
+     presentation of the same number, so the two columns can never disagree.
+  f) Only where the export gives no readable duration for a row does the column
+     fall back to counting the calendar days from start to finish inclusive.
+
+
+--------------------------------------------------------------------------------
+5. PROJECT OVERVIEW - WHICH ROWS
+--------------------------------------------------------------------------------
+
+Default behaviour: the tree is expanded to the DEEPEST LEVEL THAT STILL FITS,
+and zero-duration milestone rows are left out.
+
+The operator can override this on the page:
+
+   Default         the automatic selection above
+   Major Overview  the project, its phases and their sub-phases
+   Level 1 .. 4    everything down to that many levels
+   Custom          a chosen set of rows, plus their parent chain
+   Use last custom selection
+                   re-opens the tick-list this project was last generated with
+
+  - Levels are counted RELATIVE to the project row, so the same choice means the
+    same thing in every export even though exports nest the project row at
+    different absolute depths.
+  - Custom adds only the DIRECT PARENT CHAIN of the chosen rows, never other
+    branches, so the hierarchy is never broken and never duplicated.
+  - In Custom, ticking a row selects THAT ROW ONLY. Child tasks are ticked
+    separately, or in one go with "Tick a level: 1 2 3 4".
+  - "Use last custom selection" is stored in the browser, per project. Rows the
+    export no longer contains are dropped before the list is applied. With
+    nothing saved it falls back to the suggested selection.
+
+
+--------------------------------------------------------------------------------
+6. PROJECT OVERVIEW - EVERY COLUMN, AND WHERE ITS VALUE COMES FROM
+--------------------------------------------------------------------------------
+
+Seven columns, left to right. EVERY ONE IS READ FROM THE ROW'S OWN CELLS in the
+Excel export. Nothing is rolled up from children, and no date is recalculated.
+
+   Name ....................... the export's "Name"
+   Duration [Elapsed day] ..... the export's duration column (section 4)
+   Duration [Elapsed Month] ... that figure / 30.4375
+   Overall percent complete ... the export's "Overall % Complte" (the
+                                misspelling is the export's own)
+   Baseline Finish ............ the export's "Baseline Finish"
+   Actual / Projected Start ... the export's "Actual / Projected Start"
+   Actual / Projected Finish .. the export's "Actual / Projected Finish"
+
+So a summary row shows what ASTA itself put on that summary row. If the export
+says Design finishes 17-Nov-26, the slide says 17 Nov 26 - even where a child
+row finishes later, because that is what the source states.
+
+IF A DATE LOOKS WRONG, IT IS ALMOST ALWAYS THE FILE.
+Check the row in the export you actually uploaded. A schedule re-run between
+two exports moves these dates, and a deck built from Monday's export will not
+match Thursday's spreadsheet. The validation report in storage\generated\ names
+the uploaded file.
+
+
+--------------------------------------------------------------------------------
+7. PROJECT OVERVIEW - COLOURS AND THE NESTING BARS
+--------------------------------------------------------------------------------
+
+ROW COLOUR BY LEVEL, not by status. Three colours, repeating:
+
+   level 1   the project row            #D99370 peach,     white bold text
+   level 2   a phase                    #BFD8D8 pale blue, peach bold text
+   level 3   a sub-phase                #9F9F5F olive,     white text
+   level 4   peach again, level 5 pale blue, level 6 olive, and so on
+
+   colour tier = ((level - 1) MOD 3) + 1
+
+  - The three colours are never added to. A seventh level reuses the first
+    colour rather than inventing a fourth.
+  - The tier comes from the row's REAL depth in the export, not from its
+    position on the slide, so hiding rows never recolours the ones that remain.
+  - Indentation is 0.30" per level, applied in the Name cell only.
+
+THE NESTING BARS
+  A summary row's own colour is carried down the LEFT EDGE of everything nested
+  beneath it, the way Asta Powerproject draws a summary over its tasks:
+
+  - ONE continuous vertical bar per parent, running from the foot of the parent
+    row to the foot of its last descendant - that is, until the next row at the
+    same level or shallower.
+  - Each bar fills its whole 0.30" indent step, so a parent's bar and its
+    child's bar TOUCH and read as one nested block of colour. (They were once
+    drawn narrow and centred in the step, which left white gaps and came out as
+    a row of thin separate stripes.)
+  - Applied at EVERY depth, each level keeping its own colour.
+  - The runs are worked out once over the whole row list and then clipped to
+    each page, so a phase whose tasks spill onto a continuation page keeps its
+    bar on that page too.
+  - Launch & Design does not draw them.
+
+
+--------------------------------------------------------------------------------
+8. PROJECT OVERVIEW - THE GANTT
+--------------------------------------------------------------------------------
+
+The right-hand chart is the SAME RENDERER Launch & Design uses. Design & Build
+chooses the rows and asks for the nesting bars; everything else is shared, so
+the two reports cannot drift apart.
+
+   Baseline .......... yellow, its own lane
+   Actual Progress ... blue, drawn from the start to the progress date
+   Projection ........ green, the whole projected span, with the blue over it
+
+  - Three bars, one row. Nothing is moved to another row and no row is drawn
+    twice.
+  - ONE month scale across every page, computed from all rows at once, so page
+    4A and page 4B line up.
+  - TODAY is a red rule at the progress date, placed on the same month scale as
+    the bars. It is never drawn at a fixed position, and it stops at the last
+    activity row rather than running on through empty grid.
+
+HORIZONTAL GEOMETRY, identical on every page
+   whole block        1.43" -> 26.11"   the same band as the section title bar
+   Name               6.17"
+   six fixed columns 11.33"
+   Gantt              7.18"
+  None of it depends on the page's contents, so continuation pages cannot drift.
+
+
+--------------------------------------------------------------------------------
+9. RED FLAG SUMMARY
+--------------------------------------------------------------------------------
+
+  - Read from the dashboard's "Red Flag Summary DB" sheet, filtered to this
+    project.
+  - The bands, their order, their spans and the 29 column headings are the
+    SHEET'S OWN - nothing is hard-coded.
+  - The status colours are the sheet's own legend colours, so recolouring the
+    workbook recolours the slide with no code change.
+  - A cell the sheet marks "-" prints "-", which means "does not apply", not
+    "not yet assessed".
+  - NO Project Code column and NO project-name column. On a one-project deck
+    both repeated the deck's own subject on every row.
+
+
+--------------------------------------------------------------------------------
+10. KEY FOCUS AREA
+--------------------------------------------------------------------------------
+
+  - Read from the dashboard's "Key Focus Area" sheet, filtered to this project.
+  - COLUMN ORDER: Key Focus Area, then Responsible, then Accountable. The focus
+    text leads because it is the sentence the slide exists to deliver.
+  - Rows are grouped under full-width severity banners ("Critical", then
+    "At Risk") in the dashboard's own order, and the banner fills are the
+    sheet's own colours.
+  - Bold text inside a dashboard cell stays bold, and only that part of the
+    cell. Wording is never rewritten.
+  - A cell written as two paragraphs keeps the blank line between them, and the
+    row is built tall enough for it.
+  - Rows are dropped from the END of the lowest-priority band when the page is
+    full. THE FONT IS NEVER REDUCED. Anything dropped is counted in the
+    validation report.
+  - An empty band is never drawn.
+
+
+--------------------------------------------------------------------------------
+11. TRACKER & SCHEDULE (3A) AND SCHEDULE - CONSTRUCTION (3B)
+--------------------------------------------------------------------------------
+
+  - 3A is the status grid from "Tracker DB" plus the design timeline.
+  - 3B is produced ONLY when the dashboard has painted construction timeline
+    months for this project.
+
+THE TIMELINE BAR IS THE SHEET'S PAINT, NOT A DATE CALCULATION.
+  Each month cell is filled with exactly the colour the business painted in the
+  dashboard. The painted extents do not always agree with the Base Start and
+  Finish columns beside them, and re-deriving the bars from those dates would
+  silently overrule a human decision.
+
+  - Only the painted window is shown. NH Homestay's design row is painted
+    Apr-25 -> Sep-26 out of a 2023-2027 grid; drawing all sixty months would
+    shrink the bar to a sliver.
+  - Two rows: "Actual/Projected" over "Baseline".
+  - NO Project Code column and NO project-name column. The row-label column
+    stays, because it does carry information.
+
+
+--------------------------------------------------------------------------------
+12. LEGENDS
+--------------------------------------------------------------------------------
+
+  - Pinned to the BOTTOM-RIGHT corner of the slide: the right edge on the
+    section title bar's right edge (26.11"), the bottom edge on the foot of the
+    squirrel (14.53").
+  - The legend measures itself and lays out leftwards and upwards from that
+    corner. It is never positioned by a hand-tuned offset.
+  - Where a slide carries TWO legends (Tracker & Schedule), the phase legend
+    takes the corner and the status legend sits immediately to its left, placed
+    by subtracting the phase legend's own measured width. Both stand on the same
+    floor and cannot collide however many rows the workbook lists.
+  - Colours, labels and the Projected / Baseline columns are the dashboard's
+    own.
+
+
+--------------------------------------------------------------------------------
+13. 2 WEEK LOOK AHEAD
+--------------------------------------------------------------------------------
+
+Same selection rules and the same drawing code as Launch & Design, with two
+Design & Build differences:
+
+  - The heading reads "2 Week Look Ahead" - not "...Plan".
+  - EVERY page of the section carries that same heading. There is no "(cont.)"
+    on continuation pages.
+
+SELECTION, in order:
+  RULE 0  MILESTONES ARE EXCLUDED FIRST. A milestone marks a moment, not work
+          anyone can be asked to do in the next fortnight.
+            - Identified by the export's DURATION COLUMNS, every one of which
+              must read zero. Both present -> both must be "0". Only one
+              present -> that one must be "0". See section 4.
+            - THE TASK NAME IS NEVER USED. A real activity called "... Signoff",
+              or one under a branch named "Milestone", still appears if the
+              export gives it a duration.
+            - A duration cell that cannot be read does NOT make a milestone, so
+              a bad export can never silently delete real work.
+            - This removes rows from THIS PAGE ONLY. Milestones still appear on
+              the Project Overview and everywhere else.
+            - Every milestone removed is named in
+              lookahead_roles_validation.md, which also states which columns
+              were checked.
+  RULE 1  100% complete is excluded outright.
+  RULE 2  What remains must have an actual/projected finish inside 14 days of
+          the progress date.
+
+  - One row per task and person, grouped person-wise in the schedule's own
+    order, progressed work first and Unassigned last.
+  - A group whose only task was a milestone is never created, so no empty
+    heading is left behind.
+
+
+--------------------------------------------------------------------------------
+14. SECTION NUMBERING AND CONTENTS
+--------------------------------------------------------------------------------
+
+  - Sections are numbered in the order they are actually built. A section that
+    cannot be built is not numbered and does not appear in the Contents.
+  - A section that runs to several slides keeps ONE number and letters its
+    pages: 3A, 3B, or 4A, 4B, 4C.
+  - The Contents slide is written LAST, from the sections that really exist, so
+    it can never list a slide the deck does not contain.
+  - Anything left out is listed with its reason in the validation report.
+
+
+--------------------------------------------------------------------------------
+15. WHAT IS NEVER DONE
+--------------------------------------------------------------------------------
+
+   1. No date is invented, estimated or recalculated. Every date on the Project
+      Overview is the export's own cell.
+   2. No duration is recalculated when the export states one.
+   3. No activity is called a milestone because of its NAME.
+   4. The body font on Key Focus Area and Project Overview is never reduced to
+      fit. Rows grow, or rows are dropped and reported.
+   5. Nothing is read from a different project. A mismatch fails the run.
+   6. The Summary Dashboard's colours, labels, band order and painted timeline
+      are never overridden.
+   7. Slides copied from the previous deck are never edited.
+   8. A missing input never produces a blank or invented section - the section
+      is omitted and the reason recorded.
+
+
+--------------------------------------------------------------------------------
+16. CHECKING A DECK AGAINST THE EXPORT
+--------------------------------------------------------------------------------
+
+Every run writes its reports next to the deck in  storage\generated\ :
+
+   validation_report.md ............. the package, and whether it is sound
+   design_build_validation.md ....... the Design & Build sections
+   layout_validation.md ............. nothing overflows, overlaps or runs off
+   lookahead_roles_validation.md .... who was assigned what, and which
+                                      milestones were removed and why
+   project_overview_selection.md .... which rows the Project Overview chose
+   generation.log ................... which file AND WHICH SHEET were read
+
+TO CHECK A PROJECT OVERVIEW ROW BY HAND
+   1. Open the export you uploaded - its name is in generation.log.
+   2. Switch to the sheet generation.log says was read. A workbook can hold
+      more than one, including a hidden one with the same headings.
+   3. Find the row by Name.
+   4. Compare, left to right: the duration column, "Overall % Complte",
+      "Baseline Finish", "Actual / Projected Start", "Actual / Projected
+      Finish". All five should match the slide exactly, with the duration
+      rounded to a whole day.
+   5. If they do not match, check you are looking at the same export. A
+      re-scheduled export changes these dates.

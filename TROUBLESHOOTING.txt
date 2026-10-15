@@ -1,0 +1,51 @@
+TROUBLESHOOTING
+===============
+
+The five things that actually go wrong, and the shortest fix for each.
+
+
+1. "Node.js is not installed" when I double-click START.bat
+   Install Node.js LTS from https://nodejs.org, accept the defaults, then double-click
+   START.bat again. If you have just installed it, close the black window and reopen
+   START.bat so it picks up the new installation.
+
+
+2. Nothing happens, or the window flashes and closes
+   The folder is probably incomplete — this happens when only part of the ZIP is
+   extracted, or when START.bat is run from inside the ZIP itself.
+   Extract the whole ZIP to a normal folder first, then run START.bat from there.
+
+
+3. The page opens but says "Backend not reachable"
+   The black window must stay open — it is the application. If you closed it, run
+   START.bat again.
+   If the black window is open and the banner still shows, wait about ten seconds and
+   refresh the page; the generator takes a moment to start on a cold machine.
+   If it persists, another copy may still be running: close every "EDOS Weekly Review
+   Cloud" window and start once more.
+
+
+4. Generation fails
+   The page shows the stage it stopped at and the reason. Read that line first — it is
+   usually one of these:
+     - the wrong file in a box (the schedule export in the Dashboard slot, say);
+     - a partial Excel export with no activity rows, rather than the full schedule;
+     - a project code that does not match the uploaded export. The application refuses
+       to build a deck that mixes two projects, so it stops instead. Check the code.
+   Fix the input and click Generate again. A run that fails writes a report under
+   storage\generated\ if you need to send it on.
+
+
+5. The generated PowerPoint will not open, or looks wrong
+   If PowerPoint offers to repair the file, do not use it — send it on instead, because
+   the application checks every deck for exactly that problem before handing it over and
+   should never produce one.
+   If it opens but the fonts look wrong, install the files in the fonts\ folder
+   (right-click, Install) and reopen the deck.
+
+
+STILL STUCK
+   Send whoever supports this tool:
+     - what you were doing,
+     - the message on the page,
+     - the newest folder inside  storage\generated\

@@ -1,0 +1,393 @@
+{
+  "_comment": [
+    "Configuration for the Tracker & Schedule slide's timeline. Future projects should only need",
+    "changes HERE \u2014 never in the application source.",
+    "",
+    "PHASE MATCHING is tried in this order for every phase:",
+    "  1. primary  \u2014 exact activity name (case/punctuation-insensitive)",
+    "  2. aliases  \u2014 exact match against any alias",
+    "  3. keywords \u2014 whole-word keyword match inside the activity name.",
+    "                A keyword ending in '*' is a word-START (stem) match, e.g. 'mobiliz*' matches",
+    "                'Mobilization' and 'Mobilizing'.",
+    "",
+    "DATE RULES \u2014 dates always come from the schedule; nothing is estimated silently.",
+    "  start.rule 'earliestStart' = earliest Baseline/Actual start of the matched activities.",
+    "     Optional start.fallbackAfterPhase is used ONLY if the phase has no start date at all, and",
+    "     is reported as derived in tracker_schedule_validation.md.",
+    "  finish.rule 'milestone'    = the first finishMilestone found; its Actual/Projected finish is",
+    "     used verbatim. finish.fallback 'latestFinish' is used when no milestone matches.",
+    "     finish.offsetMonths shifts the finish by whole months (declared, and reported as derived).",
+    "  A phase that cannot be resolved is LISTED AS MISSING and omitted \u2014 never guessed.",
+    "",
+    "'label' must match the phase legend label on the dashboard's Schedule sheet so the template",
+    "colours are picked up automatically. 'priorityMilestone' wins over the finishMilestones list."
+  ],
+  "indicatorOverrides": {
+    "Completed": {
+      "symbol": "\u2714",
+      "color": "2E741C",
+      "font": "Helvetica Neue",
+      "size": 9
+    }
+  },
+  "timeline": {
+    "startPhase": "land_acquisition",
+    "endPhase": "site_establishment",
+    "chain": {
+      "_comment": [
+        "THE UPSTREAM CHAIN: LAND ACQUISITION -> LOD 100/200 -> APPROVALS must read as one continuous",
+        "run of months with NO EMPTY MONTH anywhere between them.",
+        "",
+        "Land Acquisition is the starting anchor of this part of the schedule and is NEVER moved: both",
+        "its ends come from its own source dates (Baseline Start for the baseline row, and the finish",
+        "of its controlling activity), exactly as before.",
+        "",
+        "Each step below then places one phase against the phase before it:",
+        "  startsAfterPhase  the phase starts the month AFTER that phase's finish month",
+        "  minMonths         the phase always occupies at least this many whole months",
+        "  fillGapBeforePhase  if the named phase starts later, the phase STRETCHES to the month",
+        "                    immediately before it, so the waiting time is shown as this phase rather",
+        "                    than as a blank stretch of chart",
+        "",
+        "Worked example. Land Acquisition finishes June 2027 and Approvals are scheduled to start in",
+        "October 2027. LOD 100/200 then covers July, August AND September 2027, and Approvals start in",
+        "October. The chart never shows Land Acquisition -> blank -> Approvals.",
+        "",
+        "If the named later phase starts EARLIER than that (its real dates overlap this phase) the",
+        "minimum applies instead, the real Approvals start is kept, and the overlap is reported. Nothing",
+        "is invented: a row with no finish date for the preceding phase is left alone and reported.",
+        "The baseline and the actual/projected rows are computed separately, each from its own dates."
+      ],
+      "steps": [
+        {
+          "phase": "lod",
+          "startsAfterPhase": "land_acquisition",
+          "minMonths": 1,
+          "fillGapBeforePhase": "approvals"
+        }
+      ]
+    },
+    "anchor": {
+      "_comment": [
+        "SALES LAUNCH IS THE PRIMARY ANCHOR of the executive timeline, and it anchors the BASELINE",
+        "and the ACTUAL/PROJECTED rows INDEPENDENTLY of one another.",
+        "",
+        "The anchor month is the month of the phase's own resolved start, which for Sales Launch comes",
+        "from the 'Go To Market' task via that phase's dateSource (Baseline Start for the baseline row,",
+        "Actual/Projected Start for the projected row). Go To Market remains a DATE SOURCE ONLY - it is",
+        "not a phase, not a bar and not a legend entry.",
+        "",
+        "Sales Launch then occupies exactly that month - never the month before or after - and the",
+        "neighbouring phases are laid against it so the sequence is continuous with no empty months:",
+        "  'precede' phases are placed the stated number of months BEFORE the anchor",
+        "  'follow' phases START the month AFTER the anchor and keep their OWN source finish",
+        "",
+        "adjustFinishOnly: move the phase's FINISH only and leave its start where the schedule put it.",
+        "Approvals uses this: its finish may legitimately change to close a gap before Marketing",
+        "Collateral, because the anchor has priority, but its start is real and is never moved.",
+        "",
+        "keepOwnFinish: the phase's finish is taken from its own source activity and is NEVER derived",
+        "from the anchor and never shortened to fit. Site Establishment uses this, so its bar runs to",
+        "the Baseline Finish (baseline row) or the Actual/Projected Finish (projected row) of the",
+        "'Site Establishment and Site Mobilization' row in the schedule.",
+        "",
+        "If a timeline has no anchor date at all (some projects carry no Baseline Go To Market), that",
+        "timeline is left exactly as the ordinary rules resolved it and the omission is reported. A date",
+        "is never borrowed from the other timeline."
+      ],
+      "phase": "sales_launch",
+      "precede": [
+        { "phase": "marketing_collateral", "months": 1 },
+        { "phase": "approvals", "months": 2, "adjustFinishOnly": true }
+      ],
+      "follow": [
+        { "phase": "site_establishment", "keepOwnFinish": true }
+      ]
+    }
+  },
+  "phases": [
+    {
+      "id": "land_acquisition",
+      "label": "Land Acquisition",
+      "primary": [
+        "Land Acquisition"
+      ],
+      "aliases": [
+        "JDA",
+        "Joint Development Agreement",
+        "Sales Deed",
+        "Sale Deed",
+        "Registration",
+        "Acquisition Complete",
+        "Definitive Agreement"
+      ],
+      "keywords": [
+        "land acquisition",
+        "jda",
+        "sale deed",
+        "sales deed",
+        "definitive agreement*",
+        "mou",
+        "tsr"
+      ],
+      "finishMilestones": [
+        "JDA Complete",
+        "Sales Deed Complete",
+        "Final Acquisition Complete",
+        "Definitive Agreements",
+        "Definitive Agreement",
+        "JDA",
+        "Sale Deed",
+        "Sales Deed"
+      ],
+      "start": {
+        "rule": "earliestStart"
+      },
+      "finish": {
+        "rule": "milestone",
+        "fallback": "latestFinish"
+      },
+      "dateSource": {
+        "match": [
+          "Definitive Agreements - JDA",
+          "Definitive Agreement - JDA",
+          "Definitive Agreements [JDA]",
+          "Definitive Agreement",
+          "Signing of Definitive Agreement"
+        ],
+        "applies": "baselineStartToFinish",
+        "comment": "Land Acquisition runs from the schedule's OWN Baseline Start for the Land Acquisition activity (never derived, never shifted) to the actual/projected FINISH of the controlling \"Definitive Agreements - JDA\" task. The exact task name is listed first because looser matches also hit same-day milestones. Neither the Project Acquisition summary's finish nor any Approvals / LOD / Sales Launch / Go To Market date may supply either end. The task is a date source only \u2014 never a legend entry."
+      },
+      "displayFullSpan": true,
+      "_comment": "displayFullSpan: the bar covers Land Acquisition's WHOLE span, up to and including the month its finish falls in, and the phases after it are pushed clear rather than the bar being cut short. Without it the renderer trimmed the bar to the month BEFORE the next phase's start \u2014 the finish is 15 Sep 26 but LOD 100/200 also starts 15 Sep 26, so Land Acquisition lost September and appeared to end in August."
+    },
+    {
+      "id": "lod",
+      "label": "LOD 100/200",
+      "primary": [
+        "LOD 100",
+        "LOD 200"
+      ],
+      "aliases": [
+        "LOD100",
+        "LOD200",
+        "Schematic Concept",
+        "Concept Design"
+      ],
+      "keywords": [
+        "lod 100",
+        "lod 200",
+        "lod100",
+        "lod200",
+        "schematic concept",
+        "concept design",
+        "schematic master plan",
+        "conceptual plan"
+      ],
+      "finishMilestones": [
+        "Schematic Master Plan Signoff",
+        "Schematic Concept",
+        "Concept Design",
+        "LOD 200",
+        "LOD 100",
+        "Signoff from CMD on Conceptual Plan",
+        "Conceptual Plan"
+      ],
+      "start": {
+        "rule": "afterPhase",
+        "phase": "land_acquisition"
+      },
+      "finish": {
+        "rule": "beforePhaseStart",
+        "phase": "approvals",
+        "fallback": "latestFinish"
+      },
+      "_comment": "Starts where Land Acquisition ends \u2014 never before it \u2014 and runs up to the start of Approvals, filling the intermediate months.",
+      "mustStartAfter": "land_acquisition"
+    },
+    {
+      "id": "approvals",
+      "label": "Approvals",
+      "_comment": "Start is the Excel's own earliest projected start for the approval branch and is never pushed. The FINISH is clamped to the end of the month before Marketing Collateral's month, so the sequence reads Approvals \u2192 Marketing Collateral \u2192 Sales launch in three distinct consecutive months (e.g. July \u2192 August \u2192 September 2027). A clamp that would put the finish before the start is skipped and reported instead.",
+      "approvalBranch": {
+        "keywords": [
+          "approvals",
+          "approval",
+          "statutory approvals",
+          "statutory approval",
+          "sanctions",
+          "statutory clearances",
+          "noc"
+        ],
+        "exclude": [
+          "approval drawings",
+          "approval drawing",
+          "approval drawings details",
+          "closure milestone",
+          "design approvals",
+          "internal approvals"
+        ],
+        "itemExclude": [
+          "drawings",
+          "drawing",
+          "documentation",
+          "documents",
+          "closure milestone"
+        ],
+        "priorityFinish": [
+          "rera"
+        ],
+        "minChildren": 2
+      },
+      "start": {
+        "rule": "earliestStart",
+        "fallbackAfterPhase": "lod"
+      },
+      "finish": {
+        "rule": "milestone"
+      },
+      "displayFullSpan": true,
+      "mustFinishBefore": "marketing_collateral",
+      "mustFinishBeforeAligned": true
+    },
+    {
+      "id": "marketing_collateral",
+      "label": "Marketing Collateral",
+      "primary": [
+        "Marketing Collateral"
+      ],
+      "aliases": [
+        "Project Brochure",
+        "Project Walkthrough",
+        "Product Walkthrough",
+        "EDM",
+        "Flyers"
+      ],
+      "keywords": [
+        "marketing collateral",
+        "brochure",
+        "walkthrough",
+        "edm",
+        "flyer*"
+      ],
+      "finishMilestones": [
+        "Marketing Collateral",
+        "FKH Product Walkthrough",
+        "Product Walkthrough",
+        "Project Walkthrough",
+        "Project Brochure"
+      ],
+      "start": {
+        "rule": "monthsBeforePhase",
+        "phase": "sales_launch",
+        "months": 1,
+        "alignToMonths": true,
+        "fillGapFromPhase": "approvals",
+        "fallbackAfterPhase": "approvals"
+      },
+      "finish": {
+        "rule": "milestone",
+        "fallback": "latestFinish"
+      },
+      "_comment": "Ends exactly where Sales launch begins, and covers AT LEAST the whole calendar month before it. When Approvals finishes earlier than that, Marketing Collateral stretches back to the month after Approvals so the timeline has no unexplained blank between the two. It never overlaps Sales launch and never starts before Approvals ends."
+    },
+    {
+      "id": "sales_launch",
+      "label": "Sales launch",
+      "primary": [
+        "Sales Launch"
+      ],
+      "aliases": [
+        "Go To Market - Sales Launch (Soft)",
+        "Go To Market - Sales Launch (Hard)",
+        "Campaign",
+        "Price Book"
+      ],
+      "keywords": [
+        "sales launch",
+        "campaign",
+        "price book",
+        "go to market"
+      ],
+      "finishMilestones": [
+        "Go To Market - Sales Launch (Hard)",
+        "Sales Launch (Hard)",
+        "Sales Launch"
+      ],
+      "start": {
+        "rule": "earliestStart",
+        "fallbackAfterPhase": "marketing_collateral",
+        "fallbackOffsetMonths": 1
+      },
+      "finish": {
+        "rule": "milestone",
+        "fallback": "latestFinish"
+      },
+      "dateSource": {
+        "match": [
+          "Go To Market",
+          "Go-to-Market",
+          "GTM"
+        ],
+        "applies": "both",
+        "comment": "The CONTROLLING TASK for Sales launch. 'Go To Market' is NOT a legend entry, NOT a category and NOT a separate bar \u2014 the bar stays 'Sales launch'. A same-day task renders as one month on the tracker's month scale, so the phase is visible without inventing a duration."
+      },
+      "_comment": "Resolved first in the backward chain: Go to Market gives Sales launch, Sales launch gives Marketing Collateral, Approvals must finish before that."
+    },
+    {
+      "id": "site_establishment",
+      "label": "Site Establishment & Mobilization",
+      "primary": [
+        "Site Establishment",
+        "Mobilisation",
+        "Mobilization"
+      ],
+      "aliases": [
+        "Site Establishment and Site Mobilization",
+        "Site Security",
+        "Utilities",
+        "Infrastructure"
+      ],
+      "keywords": [
+        "site establishment",
+        "site est",
+        "mobilis*",
+        "mobiliz*",
+        "site security",
+        "utilities",
+        "infrastructure",
+        "excavation"
+      ],
+      "finishMilestones": [
+        "Site Establishment",
+        "Mobilisation",
+        "Mobilization",
+        "Dumper Mobilization",
+        "Excavation"
+      ],
+      "start": {
+        "rule": "earliestStart",
+        "fallbackAfterPhase": "sales_launch"
+      },
+      "finish": {
+        "rule": "milestone",
+        "fallback": "latestFinish"
+      },
+      "mustStartAfter": "sales_launch",
+      "_comment": "Must follow Sales launch; an earlier start is pushed to the boundary and reported.",
+      "dateSource": {
+        "match": [
+          "Site Establishment and Site Mobilization",
+          "Site Establishment & Site Mobilization",
+          "Site Establishment & Mobilization",
+          "Site Establishment and Mobilization",
+          "Site Establishment"
+        ],
+        "applies": "finish",
+        "fromWbs": true,
+        "comment": "The phase's finish is the actual/projected FINISH of the Site Establishment & Mobilization row itself \u2014 a WBS summary (\"Site Establishment and Site Mobilization [FK 0]\", \u2192 2027-11-15). Matching activities alone found only \"Excavation & Dumper Mobilization\" (\u2192 2027-10-04) and the bar stopped six weeks early. The bar is never shortened to fit Sales launch or anything before it."
+      },
+      "displayFullSpan": true
+    }
+  ]
+}

@@ -1,0 +1,1795 @@
+================================================================================
+EDOS PPT LOGIC GUIDE
+================================================================================
+
+This document describes the logic currently implemented in the EDOS PPT
+generation system. It is intended as a simple reference for understanding how
+the Excel data is converted into the weekly review PPT.
+
+Source of truth:
+  1. Current EDOS code
+  2. Current configuration
+  3. Current Excel/data-processing logic
+  4. Established project/business rules implemented in the application
+
+If this document and the code disagree, the current code is the source of truth.
+
+Last updated: 3 September 2026 (version 2.58.0-excel)
+
+--------------------------------------------------------------------------------
+CONTENTS
+--------------------------------------------------------------------------------
+   1. PURPOSE OF EDOS
+   2. INPUT FILES
+   3. PROJECT TYPE SELECTION
+   4. COMMON PPT RULES
+   5. CONTENTS PAGE
+   6. RED FLAG SUMMARY
+   7. KEY FOCUS AREA
+   8. TRACKER & SCHEDULE
+   9. PROJECT OVERVIEW
+  10. LAND ACQUISITION STATUS
+  11. MASTER PLAN
+  12. APPROVALS STATUS
+  13. 2 WEEK LOOK AHEAD PLAN
+  14. CONSTRUCTION SCHEDULE / DESIGN & BUILD LOGIC
+  15. PAGE BREAK AND TABLE FITTING RULES
+  16. COLOUR RULES
+  17. DATE LOGIC
+  18. PEOPLE / RESPONSIBLE / ACCOUNTABLE / HEAD LOGIC
+  19. PROJECT-SPECIFIC LOGIC
+  20. IMPORTANT RULES / DO NOT BREAK
+  21. KNOWN LIMITATIONS OR SPECIAL CASES
+
+
+================================================================================
+1. PURPOSE OF EDOS
+================================================================================
+
+What EDOS does:
+- It takes a project's schedule (an Excel export) and the team's Summary
+  Dashboard, and it builds the weekly review PowerPoint automatically.
+- Everything on the slides is read from those files. EDOS does not invent
+  dates, statuses or names.
+- If a date or a status is missing from the source, EDOS leaves it blank and
+  says so in a report. It never guesses a value to fill a gap.
+
+What EDOS is not:
+- It is not a scheduling tool. It does not recalculate the programme.
+- It does not change your Excel files. They are only read.
+
+Two important habits built into the system:
+- If EDOS cannot work something out, it omits that part and writes the reason
+  into a validation report, rather than showing something that might be wrong.
+- If data belonging to another project reaches the deck, generation STOPS with
+  an error. A wrong project's data on a slide is treated as worse than no slide.
+
+
+================================================================================
+2. INPUT FILES
+================================================================================
+
+A. THE SCHEDULE EXPORT (required)
+- An Excel export of the project programme from ASTA (.xlsx or .xlsm).
+- EDOS reads only the FIRST worksheet.
+- Row 1 must be the header row. Column names are matched loosely, so small
+  differences in spelling and spacing are tolerated. The columns EDOS looks for:
+    Name
+    Overall % Complte          (the export misspells "Complete" — EDOS allows it)
+    Baseline Start
+    Baseline Finish
+    Actual / Projected Start
+    Actual / Projected Finish
+    Duration
+    Task.TE Team
+    Task.TE Departments
+    Delay Documentation / Notes
+    Responsible
+    Accountable
+    Head
+- The activity hierarchy (which task sits under which heading) comes from
+  Excel's own outline/grouping levels, NOT from indentation or numbering.
+- A row with rows grouped underneath it is treated as a SUMMARY (a heading).
+  A row with nothing underneath it is treated as an ACTIVITY (a task).
+- The project name is taken from the very top row of the export, tidied up.
+- If the export contains 0 activities, generation stops with a clear message —
+  this usually means a partial export was uploaded instead of a full one.
+- "Duration" and "Duration remaining" are DIFFERENT columns and are never
+  confused for one another. An export carrying only "Duration remaining" has no
+  duration, so nothing is treated as a milestone on the strength of it. [Before
+  this rule, such an export had every COMPLETED task - nothing left to run,
+  "0d" remaining - read as a zero-duration milestone and dropped from the
+  2 Week Look Ahead.]
+- IF THE EXPORT HAS NO "Actual / Projected Start" AND "Actual / Projected
+  Finish" COLUMNS, everything that depends on the projected programme is
+  blank - the whole 2 Week Look Ahead, the Actual/Projected row of the Gantt,
+  the projected dates and the delay in the Project Overview, and the approval
+  finish dates. Baseline-only exports cannot be completed by EDOS; re-export
+  with those two columns.
+
+A1. A PROJECT REPORTED IN BLOCKS (one project, several exports)
+- A few projects are run as two or more BLOCKS - for example a North Block and
+  a South Block - each planned as its own programme, each with its own export,
+  and their previous deck reports some sections once per block:
+       PROJECT OVERVIEW [SOUTH BLOCK]   4A 4B 4C
+       PROJECT OVERVIEW [NORTH BLOCK]   4D 4E 4F
+       APPROVALS STATUS [South Block]   7A
+       APPROVALS STATUS [North Block]   7B
+       2 WEEK LOOK AHEAD PLAN [SOUTH BLOCK] 8A-8E, [NORTH BLOCK] 8F-8G
+  while Red Flag Summary, Key Focus Area and Tracker & Schedule stay as ONE
+  section for the whole project.
+- Upload the first export as usual and the others as additional block exports.
+  Each is read on its own and NEVER merged: one block's data can never appear
+  under another block's heading.
+- WHERE THE BLOCK NAME COMES FROM: the export's own top row. An export whose
+  project name ends "... [North Block]" declares itself the North Block, and
+  the project's own name is what is left once that is removed. Nothing about
+  any project or block is written into the program, so a different project -
+  or a third block - needs no change, only its export.
+  A bracketed qualifier only counts as a block when it reads like one [block,
+  sector, precinct, parcel, zone]. "Nandi Hills [MH]" is not a block.
+- WHERE THE STRUCTURE COMES FROM: the previous deck. EDOS reads its slide
+  titles to decide WHICH sections are reported per block and in WHICH ORDER the
+  blocks appear [South before North, if that is how the deck runs]. A previous
+  deck that keeps Approvals as one section gets one Approvals section.
+- One SECTION NUMBER per section either way; the pages letter continuously
+  across the blocks, so South's three pages are 4A 4B 4C and North's carry on
+  4D 4E 4F, and the block is named in the page heading.
+- THE PROJECT'S OWN NAME, block qualifier removed, is what is used to look the
+  project up in the Summary Dashboard and to write the cover. The dashboard
+  holds ONE row for the project, not one per block, and Key Focus Area matches
+  it strictly - so without this an export called "... [North Block]" matched
+  nothing and Key Focus Area came out empty.
+- Everything else is the ordinary Launch & Design behaviour, run once per
+  block: same renderers, same table, same Gantt, same 73:27 split, same fonts,
+  same colours, same pagination, same 14-day look-ahead rules. There is no
+  separate engine for these projects.
+
+B. THE SUMMARY DASHBOARD (strongly recommended)
+- The team's Summary Dashboard workbook.
+- EDOS reads these sheets:
+    "Red Flag Summary"  -> the Red Flag page
+    "Tracker"           -> the Tracker page layout AND this project's statuses
+    "Key Focus Area"    -> the Key Focus page
+    "Schedule"          -> the timeline colours and phase legend
+- Without it, the Red Flag and Tracker pages fall back to statuses worked out
+  from the schedule, and the reports say so.
+
+C. THE PREVIOUS / REFERENCE PPT (optional)
+- Last week's deck for the same project.
+- Used for: the Land Acquisition page, the Master Plan page, the approval list,
+  any extra project-specific slides, and the brand theme colours.
+- Slides copied from it keep their own look. They are marked internally as
+  copied so the layout checks do not judge them by EDOS's own rules.
+
+D. CONFIGURATION FILES (shipped with the application)
+- tracker_schedule_config.json  - the timeline phases and their date rules
+- approval_config.json          - how approvals are found and named
+- edos_config.json              - the fallback Red Flag / Tracker column layout
+- project_aliases.json          - alternative spellings of a project name
+These are plain text files. Changing them changes behaviour without changing
+the program. If one is missing, EDOS carries on and notes it in the log.
+
+
+================================================================================
+3. PROJECT TYPE SELECTION
+================================================================================
+
+There are two project types. The operator chooses one on the upload form.
+
+A. LAUNCH & DESIGN (the default)
+Pages produced, in this order:
+   1. Red Flag Summary
+   2. Key Focus Area
+   3. Tracker & Schedule
+   4. Project Overview
+   5. Land Acquisition Status      (only if available - see section 10)
+   6. Master Plan                  (only if available - see section 11)
+   7. Approvals Status             (only if the project has approvals)
+   8. 2 Week Look Ahead Plan
+
+B. DESIGN & BUILD
+Pages produced, in this order:
+   1. Red Flag Summary
+   2. Key Focus Area
+   3. Tracker & Schedule           (3A status + design timeline, 3B construction)
+   4. Project Overview             (and "Project Overview - Construction")
+   5. 2 Week Look Ahead Plan
+   6. Site Progress                (only if the reference deck has one)
+
+What is different between them:
+- DESIGN & BUILD NEVER HAS AN APPROVALS STATUS PAGE. This is deliberate and is
+  actively checked: if an Approvals page ever appeared, the validation fails.
+- Design & Build has no Land Acquisition Status page and no Master Plan page.
+- Design & Build can produce a second Tracker page ("Schedule - Construction")
+  when the dashboard has construction timeline data for the project.
+- Design & Build can produce a second Project Overview page for construction.
+- Design & Build reads its data from the Design & Build dashboard sheets
+  ("Red Flag Summary DB", "Tracker DB", etc.) when those sheets exist.
+- Design & Build needs ONE Excel export only. It does NOT ask for a separate
+  construction schedule upload. All design and construction activity comes from
+  the single uploaded export.
+
+Project type therefore changes which pages exist and where the data is read
+from. It does not change the fonts, colours, page-break rules or table styling.
+
+
+================================================================================
+4. COMMON PPT RULES
+================================================================================
+
+Page size:
+- Every slide is 26.67 inches wide by 15 inches tall (a wide format).
+
+Fonts (three only, and each has a job):
+- Impact          - page titles
+- Helvetica Neue  - all normal words
+- Meta-Normal     - ALL numbers: dates, percentages, day counts, Sl. numbers
+If a font is missing on the computer, EDOS prints a loud warning rather than
+letting PowerPoint silently substitute a different one.
+
+Text sizes actually used:
+- Page title                        40 pt
+- Approvals table body              28 pt
+- Key Focus Area body               24 pt
+- Project Overview body             24 pt
+- 2 Week Look Ahead body            19 pt
+- Smallest text allowed anywhere    18 pt   (16 pt for column headings)
+
+Column heading sizes:
+- Key Focus Area           up to 28 pt (see section 7 for the sizing rule)
+- Approvals stage headings 24 pt
+- Project Overview         24 pt
+- 2 Week Look Ahead        21 pt
+- Dense tables             18 pt
+
+The page furniture, identical on every generated page:
+- Title bar across the top with a numbered badge on the left.
+- TotalEnvironment wordmark top-left.
+- The squirrel mascot at the bottom-left. NO TABLE MAY OVERLAP IT. Tables must
+  finish above it with a small clear margin.
+- Content starts 1.43 inches from the left and is 24.68 inches wide.
+
+The golden rule for fitting text:
+- Grow the row height first.
+- Only shrink the font as a last resort.
+- Never below the readable minimum.
+- Never make the slide bigger.
+
+
+================================================================================
+5. CONTENTS PAGE
+================================================================================
+
+PAGE NAME: Contents
+
+What this page shows:
+- A numbered list of the sections in this deck.
+
+Where the data comes from:
+- Not from Excel. It is built from the pages EDOS ACTUALLY GENERATED.
+
+How the data is selected:
+- Every time a section is added to the deck, it is written into an internal
+  register with the next number.
+- The Contents page is created early but left EMPTY, and is filled in at the
+  very END, from that register.
+- This is why Contents can never list a page that is not in the deck.
+- A section that is skipped does not take a number, so there are no gaps: the
+  numbering always reads 1, 2, 3, ...
+- A "(cont.)" continuation page does not get its own Contents line. A section
+  that runs over several slides is listed once.
+
+How the page is arranged:
+- List starts 1.43 inches from the left, near the top.
+- 40 pt text. The number is set in Meta-Normal, the section name in Helvetica
+  Neue.
+- LINE SPACING IS 1.3.
+
+Important special rules:
+- Land Acquisition, Master Plan and Approvals Status appear ONLY if those pages
+  were really produced (see sections 10, 11 and 12).
+
+What should NOT happen:
+- Contents must never list a section that is not in the deck.
+- The numbering must never skip a number or run out of order.
+- No section name is hard-coded into this page.
+
+
+================================================================================
+6. RED FLAG SUMMARY
+================================================================================
+
+PAGE NAME: Red Flag Summary
+
+What this page shows:
+- One row for this project, with a coloured square for every checklist item
+  across the whole project lifecycle, grouped under headings such as Land
+  Acquisition, Fund, Design, Statutory Approvals, Marketing, Sales,
+  Construction.
+
+Where the data comes from:
+- The "Red Flag Summary" sheet of the Summary Dashboard.
+- The group headings, the column names, the legend and the colours are ALL read
+  from that sheet. Nothing is built into the program.
+
+How the data is selected:
+- EDOS finds this project's row on the sheet. It matches on the PROJECT CODE
+  first; if the code matches exactly, that row wins outright. Only if there is
+  no code does it fall back to matching the project name.
+- The colour in each cell IS the status. EDOS reads the cell's fill colour and
+  looks it up in the sheet's own legend.
+- A cell containing the text "NA" is Not Applicable.
+- A cell whose fill colour is not in the legend is left blank, and the report
+  names the column and the colour, so the sheet can be corrected.
+
+Important special rules:
+- Because merged heading cells repeat their value in Excel, EDOS collapses runs
+  of identical adjacent headings back into one group heading of the right width.
+- If the project's row cannot be found, the page is still drawn with the correct
+  structure but EMPTY indicators, and the report states the row was not found.
+
+What should NOT happen:
+- Another project's row must never be used.
+- A status must never be guessed from the schedule when the dashboard has a row.
+
+
+================================================================================
+7. KEY FOCUS AREA
+================================================================================
+
+PAGE NAME: Key Focus Area
+
+What this page shows:
+- The current critical and at-risk items for THIS project, who is responsible
+  and accountable, which team, what the focus is, and how many days late.
+
+Where the data comes from:
+- The "Key Focus Area" sheet of the Summary Dashboard.
+- (A sheet named "Key Focus Area-Old" is deliberately ignored.)
+
+How the data is selected:
+- EDOS finds the header row (the row containing "Responsible" and either
+  "Key Focus Area" or "Delay Days").
+- The columns are then:
+     Project Code
+     Projects
+     Responsible
+     Accountable
+     Team              <- THE COLUMN IMMEDIATELY LEFT OF "Key Focus Area"
+     Key Focus Area
+     Delay Days
+- The severity groups (CRITICAL / AT RISK) are NOT a column. They are banner
+  rows: a row where the only filled cells all say the same thing. EDOS reads
+  the banner text, and takes the band's colour from the sheet itself.
+  ("Super Critical" is treated as Critical.)
+- Every data row is then kept only if it belongs to this project, using STRICT
+  matching. This page does NOT use the forgiving name matching the rest of the
+  deck uses. The order of precedence is:
+      1. If the selection AND the row both carry a project code, THE CODE
+         DECIDES. Equal codes accept; DIFFERENT CODES REJECT. The name is not
+         consulted at all, in either direction.
+      2. Otherwise, an EXACT project name (ignoring only case and punctuation).
+      3. Otherwise, an EXACT alias listed in project_aliases.json.
+      4. Otherwise THE ROW IS EXCLUDED.
+- There is NO partial matching. A row is never admitted because it shares a
+  word, a prefix, or a similar spelling. "contains", "starts with" and single
+  keyword hits are not evidence of a project match.
+- Why this is strict here: the dashboard currently holds THREE projects called
+  Nandi Hills - 0100 [MH], 0130 [Sult] and 0107 [Ach] - and two Violet Hill
+  phases. Under the old forgiving test each Nandi Hills project showed all
+  three projects' rows, and "Blue in Green" also picked up "Tangled up in
+  Green" on the single shared word "Green".
+- A band that ends up with no rows has its banner removed, so there is never an
+  orphaned heading.
+- Every accepted and rejected row, with the reason, is recorded and reported so
+  a missing row can be explained rather than guessed at.
+
+Aliases (how to add a short or alternate project name):
+- project_aliases.json lists groups of spellings that all mean the same project.
+- "groups"     apply to BOTH the forgiving matcher (Red Flag row, Tracker row,
+               approvals sheet lookup) and the strict one.
+- "strictOnly" apply to the STRICT matcher only, i.e. Key Focus Area.
+- Use "strictOnly" for a new Key Focus mapping. The forgiving matcher joins a
+  name to a group when it shares ONE WORD with any member, so putting
+  "Madakuhosahalli" in a shared group with "Nandi Hills [MH]" would also have
+  made it a full match for "Nandi Hills [Sult]" and "Nandi Hills [Ach]".
+- Currently declared as strictOnly:
+      Nandi Hills [MH]  =  Madakuhosahalli
+      TMFT Phase 3      =  TMFT- Ph 3
+      ItQE Ph 2c & 3a   =  ITQE Phase 2c & 3a  (the bracketed villa lists differ
+                                                between the export and the sheet)
+- Aliases are never generated automatically and never derived from partial
+  words. If a project's dashboard spelling differs from its export name and no
+  alias is listed, ENTER THE PROJECT CODE on the form - the code resolves it
+  exactly - or add the alias.
+
+How the page is arranged:
+- Six columns, with FIXED widths that are identical on every row and on every
+  continuation page:
+     Projects          3.40"
+     Responsible       2.11"
+     Accountable       2.11"
+     Team              2.33"
+     Key Focus Area   13.43"   <- deliberately the widest, it holds the most text
+     Delay [Days]      1.30"
+     TOTAL            24.68"   (the table width never changes)
+- Key Focus Area was given priority width because it carries by far the most
+  information. The width was taken proportionally from Responsible,
+  Accountable, Team and Delay - each reduced by the same factor - so their
+  relative proportions are unchanged.
+- Delay [Days] was then widened by about 10% (1.12" -> 1.23"), and that width
+  came out of Responsible, Accountable and Team - not out of Projects and not
+  out of Key Focus Area.
+- Body text is 24 pt and is NEVER shrunk to fit more in.
+- COLUMN HEADINGS ARE ALL THE SAME SIZE: 22 pt, on all six columns, with the
+  same alignment. No heading is ever made smaller on its own to make it fit.
+  (Headings used to be sized per column, which produced six different sizes -
+  28 / 23 / 23 / 28 / 28 / 20.5 pt - down a single header row.)
+- IF A HEADING NEEDS MORE ROOM, THE COLUMN IS WIDENED, NEVER THE TYPE REDUCED.
+  At 22 pt the single long words "Responsible" and "Accountable" need 2.11" and
+  "[Days]" needs 1.30", so those three columns are widened to those figures and
+  the small remainder comes out of Key Focus Area, which is the only column with
+  real slack. That is why the final widths above differ slightly from the
+  starting figures, and why the total is still exactly 24.68".
+- Which columns were widened, and why, is printed in
+  output/key_focus_layout_validation.md, and
+  output/presentation_refinement_validation.md reads the finished file back and
+  fails if the six headings are not all one size.
+- Each row's height is measured before it is placed: text wraps on whole words,
+  and the row grows to fit its tallest cell.
+
+BOLD TEXT FROM THE EXCEL IS KEPT:
+- The dashboard authors bold the part of a note that carries the news. That
+  emphasis is CARRIED THROUGH to the slide.
+- Bold in the Excel  -> bold in the PPT
+  Normal in the Excel -> normal in the PPT
+  Mixed within one cell -> mixed in exactly the same places
+- Example. The dashboard cell reads:
+     "Project entrance area, Security cabin, Boundary wall - Security Cabin AR
+      GFC drawings released on 11 Aug'26. Project entrance area & boundary wall
+      design work in progress."
+  with the opening phrase bold. The slide prints that phrase bold and the rest
+  normal.
+- The cell is NEVER bolded as a whole just because part of it is bold, and no
+  words are ever bolded by the program's own choice. The bold comes only from
+  the Excel cell.
+- The wording is never changed: the text is taken run by run, in the source
+  order, exactly as written. Nothing is re-worded, shortened or tidied.
+- A cell with no bold in it is handled exactly as before.
+- Row limits: at most 24 Critical rows and 28 At Risk rows. If there are more,
+  the extra rows are dropped from the end (the sheet's own order is its priority
+  order) and the report states how many were dropped. The font is NOT reduced
+  to squeeze them in.
+
+Important special rules:
+- The band colours are the SAME two colours the Red Flag page uses for red and
+  amber, so the two pages can never drift apart.
+
+What should NOT happen:
+- Key Focus Area rows from another project must never appear - not even from a
+  project with a very similar name.
+- A row must never be admitted on a partial, keyword or fuzzy name match.
+- A fuzzy name match must never override a project code that disagrees.
+- Aliases must never be invented or auto-generated from partial words.
+- Key Focus text must never be shortened, summarised or rewritten to fit.
+- Different rows must never have different column widths.
+
+
+================================================================================
+8. TRACKER & SCHEDULE
+================================================================================
+
+PAGE NAME: Tracker & Schedule
+
+This page has TWO parts: a status grid on top, and a timeline underneath.
+
+------------------------------------------------
+8A. THE STATUS GRID (the ticks and crosses)
+------------------------------------------------
+
+What it shows:
+- One row for this project with an indicator for each checklist column.
+
+Where the data comes from:
+- LAYOUT (group headings, column names, legend symbols, colours) comes from the
+  "Tracker" sheet of the Summary Dashboard.
+- STATUSES come from THIS PROJECT'S OWN ROW on that same sheet.
+
+How the status is decided:
+1. EDOS finds this project's row on the Tracker sheet, matching on PROJECT CODE
+   first and only falling back to the name if there is no code.
+2. It reads that row cell by cell, using the sheet's own vocabulary:
+        1  or  tick        -> Completed
+        the sunburst glyph -> In Progress
+        a cross            -> Not Started
+        NA                 -> Not Applicable
+3. Where the dashboard row states a status, THAT is the status shown.
+4. Only where the dashboard leaves a cell blank does EDOS fall back to working
+   the status out from the schedule (see below).
+5. If no dashboard row can be matched to this project at all, every status is
+   worked out from the schedule, and the log says so plainly.
+
+The schedule-derived fallback, for blank cells only:
+- EDOS matches schedule activities to the column using the column's keywords
+  (from edos_config.json) or its name. Matching is on WHOLE WORDS, so "CLU"
+  does not match "Clubhouse".
+- Then:
+     no activity matched            -> Not Applicable
+     every matched activity 100%    -> Completed
+     at least one above 0%          -> In Progress
+     otherwise                      -> Not Started
+
+Important special rules:
+- The join between the dashboard row and the columns is made on the SHEET
+  COLUMN NUMBER, not the column name. This matters because the sheet genuinely
+  repeats a heading - "Sales Lounge & Experience Centre" appears under both
+  Design and Site Establishment - and a name-based join would confuse the two.
+- The status is taken from the source data. It is NOT inferred from a date being
+  present, from how near a date is, or from a task or project name.
+
+What should NOT happen:
+- The grid must never contradict the Summary Dashboard row for the project.
+- Another project's row must never be used.
+- A status must never be guessed from dates.
+
+------------------------------------------------
+8B. THE TIMELINE (the coloured bars)
+------------------------------------------------
+
+What it shows:
+- Two rows against a month-by-month calendar:
+      Actual / Projected   - the solid tone
+      Baseline             - the lighter tone of the same colour
+- The pairing is PER PHASE, never per row and never per project. Each phase owns
+  a PAIR of swatches on the Summary Dashboard's Schedule sheet - a solid tone and
+  a lighter tone of the same hue - so the Baseline segment under any phase is
+  always the lighter version of the segment above it. The Baseline row is
+  therefore never one flat colour. The project's name is not an input.
+- Matching a phase to its pair tolerates wording differences between the
+  dashboard and tracker_schedule_config.json: the exact label is tried first,
+  then the label with case, spacing, punctuation and "&"/"and" normalised, then
+  the phase's config id. Only if the dashboard carries no swatch at all for a
+  phase is the lighter tone worked out from that phase's OWN solid tone - never
+  from a shared fallback colour, which used to let one phase silently borrow a
+  grey belonging to nothing.
+- Which of those routes was used is printed for every phase in
+  tracker_schedule_validation.md, together with a check that each baseline tone
+  really is lighter than and the same hue as its own actual tone, and that no
+  two phases share a baseline tone.
+- One continuous bar per phase, in this fixed order:
+      1. Land Acquisition
+      2. LOD 100/200
+      3. Approvals
+      4. Marketing Collateral
+      5. Sales launch
+      6. Site Establishment & Mobilization
+
+Where the data comes from:
+- The uploaded Excel schedule, matched to the six phases using
+  tracker_schedule_config.json. Phase colours come from the dashboard's
+  "Schedule" sheet legend.
+
+How dates are selected:
+- See section 17 for the full, phase-by-phase date logic.
+
+How the calendar is arranged:
+- A year band across the top, then one cell per month underneath.
+- Month labels are ROTATED (turned on their side) and read like "Sep-24". This
+  is what allows EVERY month to be named however long the programme is: a
+  sideways label needs only a quarter of an inch of column width. No month is
+  ever abbreviated away or dropped.
+- THE CALENDAR SHOWS ONLY THE LAST 3 YEARS, and then forward as far as the work
+  runs. The window is worked out from the progress date the deck is stated as
+  at - the very same date the Today line uses, so the two can never disagree:
+       VISIBLE START = progress date minus 3 years, rounded to the 1st
+       VISIBLE END   = the end of the work (extended if phases need more cells)
+  Land acquisition on these projects can begin four or five years before the
+  report, and those early years squeezed the month cells so narrow that the
+  recent months became unreadable.
+- THIS IS A CALENDAR CHANGE ONLY. Nothing is filtered out, no phase is dropped
+  and NOT ONE SOURCE DATE IS CHANGED OR RECALCULATED.
+     · A bar that begins before the window still appears - it starts at the left
+       edge, showing the part of it that falls inside the window. Its real start
+       date is still printed in the report.
+     · A bar that runs past the right-hand end keeps its real finish date and is
+       drawn as far as the calendar reaches.
+- If the whole schedule already begins within 3 years, nothing is hidden. If the
+  whole schedule ENDED more than 3 years ago, the window is NOT applied - the
+  full span is shown rather than an empty calendar - and the report says so.
+- output/schedule_layout_validation.md prints the window, the reason for it, and
+  how many earlier months sit outside it.
+- Within that window, extra months are still added if several phases would
+  otherwise pile into one column.
+
+How the bar extent is decided:
+- A phase needs a START DATE to be drawn at all. A phase with no start date gets
+  NO BAR - nothing is invented.
+- Bars never run backwards. Phases are placed in the configured order and a
+  phase that would start before the previous one is pushed to the next month,
+  rather than being drawn out of order or twice.
+- ONE EXCEPTION, AND IT MATTERS: the phases of the launch window - Approvals,
+  Marketing Collateral, Sales launch and Site Establishment & Mobilization - are
+  NEVER pushed along like this. They have already been set to exact whole months
+  around the Go To Market date (see section 17, phase 5), so pushing them would
+  move Sales launch out of its own launch month, which is the one thing the chart
+  must not do. Where an earlier bar would run into them, THE EARLIER BAR IS THE
+  ONE THAT STOPS, at the month before the launch window begins.
+- EVERY phase still waiting to be placed before that launch window keeps a month
+  of its own. The stopping point is therefore not simply "the month before the
+  window": it is that month minus one cell for each phase that still has to fit
+  in between. On Violet Hill's BASELINE row the source data genuinely contradicts
+  itself - Land Acquisition's own Baseline Finish (2025-12-11) falls AFTER its own
+  baseline Go To Market (Nov-25) - so Land Acquisition stops two cells early to
+  leave one month for LOD 100/200 and one for Approvals. Without that reservation
+  LOD 100/200 and Approvals were both capped at the same cell and drawn on top of
+  each other. NO DATE IS CHANGED: the real start and finish stay printed in
+  schedule_layout_validation.md and the row is marked as shifted.
+- A normal phase runs from its start to the month BEFORE the next phase begins.
+- A phase marked "full span" in the configuration keeps its whole real duration
+  and the phases after it are pushed clear instead. Currently full span:
+  Land Acquisition, Approvals, Site Establishment & Mobilization.
+- The result is that the WHOLE CHAIN - Land Acquisition -> LOD 100/200 ->
+  Approvals -> Marketing Collateral -> Sales launch -> Site Establishment &
+  Mobilization - reads as CONSECUTIVE, TOUCHING BLOCKS with no empty month
+  anywhere between them, on BOTH rows, and each row keeps its own dates.
+  (LOD 100/200 is what closes the first half of that chain - see section 17,
+  phase 2.)
+- output/schedule_layout_validation.md CHECKS THIS on every run: "No empty
+  months between consecutive phases" lists any blank cell it finds. A blank
+  caused by a missing date in the Excel is named as such; any other blank is a
+  failure.
+- A phase that has a START but no FINISH in the schedule is drawn from its real
+  start and is deliberately LEFT THERE rather than stretched to an invented
+  finish. The validation report lists these as "Baseline data gaps in the source
+  schedule" so the missing date can be added to the Excel.
+
+The Today line:
+- A single vertical line at the report date (the date the deck is stated as at).
+- Its position is CALCULATED on the same month scale as the bars, so it can
+  never disagree with them.
+- If the report date falls outside the timeline, NO line is drawn, and the
+  report says why.
+
+Legend and caption:
+- One swatch per phase, in the Actual colour, arranged in up to 3 columns.
+- One caption underneath: "Baseline shown in the lighter tone of the same
+  colour."
+
+What should NOT happen:
+- Only the selected project may appear.
+- Dates must never be hard-coded for a particular project.
+- A bar must never be stretched from the left edge to fake an earlier start.
+
+
+================================================================================
+9. PROJECT OVERVIEW
+================================================================================
+
+PAGE NAME: Project Overview  (pages number 4, 4A, 4B ... when it runs over)
+
+What this page shows:
+- The project's main activities with their progress and dates, and a small Gantt
+  chart on the right.
+
+Where the data comes from:
+- The uploaded Excel schedule only.
+
+The seven columns:
+   Name
+   Duration [Elapsed day]
+   Duration [Elapsed Month]
+   Overall percent complete
+   Baseline Finish
+   Actual / Projected Start
+   Actual / Projected Finish
+HORIZONTAL GEOMETRY (identical on every Project Overview page):
+- The whole block runs from 1.43" to 26.11" - exactly the band occupied by the
+  section header bar ("4A PROJECT OVERVIEW") and the badge above it, so the
+  table, the Gantt and the heading all start and end on the same two lines.
+  It used to start at 0.50", which left the table hanging out to the left of
+  its own heading.
+- Column widths: the six fixed columns are sized from their own headings and
+  data; Name takes the remainder LESS a fixed 1.20" trim. The trim is a
+  constant - it is not measured from the longest activity name - so every
+  project's Project Overview has the same column boundaries whatever its
+  activities are called.
+      Name                       6.17"   (1.43" -> 7.60")
+      the six fixed columns     11.33"   (7.60" -> 18.93")
+      Gantt                      7.18"  (18.93" -> 26.11")
+- None of these numbers depends on a page's contents, so 4A, 4B, 4C ... are
+  identical by construction: same left edge, same column positions, same Gantt
+  origin, same total width. A continuation page cannot drift.
+- They live in ONE exported function, overviewGeometry(), which the renderer
+  draws from and the validation reports measure against. Nothing recomputes the
+  boundary separately.
+
+Understanding the hierarchy (this is the key to the page):
+The Excel export nests rows in levels. A typical project looks like this:
+   level 0   One Tiny Flower                            <- the project
+   level 1   One Tiny Flower - Acquisition and Launch   <- the programme
+   level 2   Milestones, Project Acquisition, Design    <- the sections shown
+   level 3   the individual tasks
+Not every project has a level 1 row. Some hang their sections straight off the
+project row.
+
+HOW THE FIRST DISPLAYED ROW IS CHOSEN:
+- EDOS finds the shallowest section it is going to display, and shows ITS PARENT
+  as the first row.
+- For the example above, the displayed sections are at level 2, so the first row
+  is the level 1 row: "One Tiny Flower - Acquisition and Launch". Its figures
+  (55% complete, 960 days, finish 07-Dec-26) describe the work actually listed
+  beneath it.
+- Where a project's sections hang directly off the project row, the parent IS
+  the project row, so the first row is simply the project name - exactly as
+  before.
+- THE NAME IS READ FROM THE EXCEL ROW. Nothing is joined together or
+  constructed. EDOS never appends "- Acquisition and Launch" to a project name;
+  it only shows that text when it is genuinely the name of the row in the Excel.
+
+HOW THE OTHER ACTIVITIES ARE SELECTED:
+- EDOS works out the "section level": the shallowest level that has at least
+  three real sections (rather than project or phase containers).
+- It then shows:
+     rows AT the section level                    - as major headings
+     rows ONE level below that                    - as their activities
+- Rows deeper than one level below are not shown.
+- Rows that merely repeat the project name, or are phase wrappers, are treated
+  as containers and are not shown as sections.
+- Detail rows one level down are shown only if they look like a real package or
+  deliverable (approval, execution, sales, mobilisation and similar keywords).
+- Anything excluded is listed with a REASON in project_overview_selection.md.
+- The "Milestones" section and everything under it is deliberately not shown.
+
+THE OPTIONAL DISPLAY LEVEL CONTROL:
+- The operator can override the automatic choice with a display level:
+     Default        - the automatic selection described above
+     Major Overview - everything down to 2 levels below the project row
+     Level 1 .. 4   - everything down to that many levels
+     Custom         - a chosen set of rows, plus their parent chain
+     Use last custom selection
+                    - re-opens the selection this project was last generated
+                      with (see below)
+- Levels are counted RELATIVE to the project row, so the same choice means the
+  same thing in every export even though exports nest the project row at
+  different absolute depths.
+- Zero-duration milestone rows are excluded from every level view.
+- Custom adds only the direct parent chain of the chosen rows - never other
+  branches - so the hierarchy is never broken and never duplicated.
+
+TICKING ROWS IN CUSTOM:
+- Ticking a row selects THAT ROW ONLY. Its child tasks are not pulled in and are
+  ticked separately, so choosing "the activities at this level" is one click per
+  row. "Tick a level: 1 2 3 4" above the list does a whole outline depth at once.
+- This is the one change: it used to tick the row's entire subtree, which made
+  choosing a level impossible - ticking a phase to show the phase brought in
+  every task under it, and the only way back was to untick them one at a time.
+- Parent rows above a selection are still added automatically, because a selected
+  row has to be placeable in the plan. That is addition for STRUCTURE, not
+  selection of content, and sibling branches are never pulled in.
+
+USE LAST CUSTOM SELECTION:
+- Whenever a Design & Build deck is generated successfully with a custom
+  selection, that tick-list is saved for the project.
+- Choosing this option loads it back. Saved rows that the export no longer
+  contains are dropped first, so a re-baselined schedule cannot leave the count
+  disagreeing with what is on screen.
+- If the project has no saved selection - or none of it still exists - the
+  suggested selection is loaded instead, which is what Custom would have
+  offered anyway.
+- It is a convenience over Custom, not a different thing to generate: the
+  request still asks for "custom", so there is only ever one way rows are chosen.
+- The selection is stored in the BROWSER, per project. Clearing browser data, or
+  using a different machine or browser, loses it - nothing in the deck or on the
+  server depends on it, and the fallback above covers that case.
+
+Colour hierarchy (by level, not by status):
+   level 1  the project / top row     peach fill,     white bold text
+   level 2  a section heading         pale blue fill, peach bold text
+   level 3  an activity               olive fill,     white text
+- A COMPLETED ACTIVITY IS COLOURED THE SAME AS ANY OTHER. There is no status
+  colouring in this table at all - no green for complete, no red for late. This
+  is what prevents a completed activity from picking up a wrong status colour.
+
+The Gantt:
+- One shared month calendar for every page of the section, so the pages line up.
+- A year band on top, then the FIRST LETTER of each month underneath.
+- Two bars per row:
+     Baseline          yellow
+     Projection        green   - the full projected span
+     Actual Progress   blue    - drawn over the projection, showing the elapsed
+                                 fraction of the projected span at the row's
+                                 percent complete
+- A red TODAY marker with a small tag, positioned by calculation on the month
+  scale. It is only drawn if the date falls inside the chart.
+- A legend bottom-right with exactly three entries: Baseline, Actual Progress,
+  Projection.
+- Gantt row backgrounds are always white - the level colour is not carried over.
+
+Page splitting:
+- Rows are grouped into sections (a section starts at each major heading).
+- A section is only started on a page if at least its first TWO rows fit;
+  otherwise the whole section moves to the next page. This is what stops a
+  heading being left alone at the bottom.
+- The table and Gantt frames stop at the last row that actually has content, so
+  no empty bordered area is ever left at the bottom of a page.
+- Every page has the same top edge, the same column widths and the same split.
+
+What should NOT happen:
+- The whole hierarchy must not be flattened.
+- Every Excel row must not be shown.
+- A parent activity must not be duplicated.
+- The first row must not be replaced by a bare project name when the Excel
+  hierarchy has a real row at that position.
+
+
+================================================================================
+10. LAND ACQUISITION STATUS
+================================================================================
+
+PAGE NAME: Land Acquisition Status
+
+What this page shows:
+- The land acquisition position for the project, as a picture or as the page
+  from last week's deck.
+
+Where the data comes from:
+- An uploaded image, OR the same page copied out of the reference PPT.
+- It is NOT generated from the Excel schedule.
+
+How it is selected:
+- If an image is uploaded, that image becomes the page.
+- Otherwise, if a reference PPT was uploaded, EDOS looks for a slide whose
+  HEADING mentions "Land Acquisition" and copies it.
+- If a reference PPT was uploaded and no such heading exists, THE PAGE IS
+  OMITTED - from the deck and from the Contents.
+- If no reference PPT was uploaded at all, a placeholder is kept.
+
+Important special rules:
+- Matching is on the slide HEADING only (the first few text runs). This is
+  deliberate: matching on the whole slide text once made "Land Acquisition"
+  find the Red Flag Summary slide, producing two Red Flag pages and no Land
+  page.
+
+NOTE ON THE LAND ACQUISITION TIMELINE BAR:
+The Land Acquisition PHASE on the Tracker timeline is a different thing from
+this page. Its dates are covered in section 17.
+
+What should NOT happen:
+- A Land Acquisition page must never be invented when there is no source for it.
+
+
+================================================================================
+11. MASTER PLAN
+================================================================================
+
+PAGE NAME: Master Plan
+
+What this page shows:
+- The project master plan drawing, as it appeared in last week's deck.
+
+Where the data comes from:
+- The reference PPT only. It is not generated from Excel.
+
+How it is selected:
+- EDOS looks for a slide whose HEADING mentions "Master Plan" and copies it,
+  together with every image and embedded object that slide depends on.
+- If a reference PPT was uploaded and there is no such slide, THE PAGE IS
+  OMITTED - from the deck and from the Contents.
+- If no reference PPT was uploaded, a placeholder is kept.
+
+What should NOT happen:
+- The page must never appear empty in the Contents.
+
+
+================================================================================
+12. APPROVALS STATUS
+================================================================================
+
+PAGE NAME: Approvals Status
+
+Not applicable to DESIGN & BUILD projects - that type never has this page.
+
+What this page shows:
+- The statutory approvals for THIS project, the four workflow stages each has
+  reached, and the baseline and projected finish dates.
+
+The columns:
+   Sl.No | Approvals | Drawings / Doc. Submission | Application | Fee Payment |
+   Issued | Baseline Finish | Actual / Proj. Finish
+
+Where the approval LIST comes from (in strict order of precedence):
+   1. THE UPLOADED REFERENCE PPT's own Approvals slide for this project.
+   2. The per-project master list in approval_config.json, if one exists for
+      this project.
+   3. The project's own approval branch in its own Excel export.
+NEVER a list borrowed from another project.
+
+How the approval branch is found in the Excel:
+- BY NAME, never by row number or depth (it sits at different depths in
+  different exports). EDOS looks for a heading called "Approvals
+  [Pre-Construction]" or one of its listed aliases.
+- Headings that are DESIGN deliverables ("Approval Drawings / Details") are
+  explicitly excluded - they are drawings, not statutory approvals.
+- Only the activities immediately below that heading become approval rows.
+  Child rows that are drawings, documentation or closure milestones are skipped.
+
+How the four stage ticks are decided:
+- Each stage looks for its own keywords among that approval's own activities:
+     Drawings / Doc. Submission - drawing and document submission terms
+     Application                - scrutiny, application, submission, site visit
+     Fee Payment                - fee payment, demand note, payment
+     Issued                     - issue, issued, approved, sanction, certificate
+- A TICK IS SHOWN ONLY IF THE MATCHED ACTIVITY IS 100% COMPLETE.
+
+How the dates are chosen:
+THE APPROVAL'S OWN HIERARCHY DECIDES THIS - not a word search.
+
+- EDOS takes the approval heading, goes down through its children to the END of
+  its own chain of work, and uses THE LAST TASK it finds there.
+- "Its own chain" means exactly that: only tasks underneath THIS approval, in
+  THIS project, at the level currently being displayed. Never another approval,
+  never another parent activity, never another project.
+- The order followed is the Excel's own row order, which is the order the
+  hierarchy is written in. So the last row under the approval is the last task.
+- That single task supplies BOTH dates, each read separately:
+     Baseline Finish        -> that task's Baseline Finish
+     Actual / Proj. Finish  -> that task's Actual / Projected Finish
+  The two are never mixed and neither is worked out from the other.
+
+Worked example - Environmental Clearance:
+     Environmental Clearance - MoEF
+         Documents & drawings collection as per check-list
+         Issuance of DD & Fee payment
+         SEAC committee meeting and recommendation for issue of TOR
+         SEIAA meeting and issue of TOR
+         TOR issue, EIA study and Report submission
+         SEAC review and recommendations to issue EC
+         Issue of Environmental clearance.        <-- THIS ONE
+  The date comes from "Issue of Environmental clearance." because it is the last
+  task under that approval. Several earlier tasks also contain the word "issue"
+  - "Issuance of DD & Fee payment", "SEAC review and recommendations to issue
+  EC" - and none of them is used.
+
+Why the rule was changed:
+- The old rule searched the approval for words in a priority list (issuance,
+  registration, issued, "issue of", issue, approved, sanction, certificate,
+  clearance) and took whichever match finished LATEST. Those words sit on
+  intermediate steps too, so it picked them. Real cases it got wrong:
+     One Tiny Flower, Building Plan Sanction
+        picked "Issuance of Demand Note"                (a fee step, 06 Oct 26)
+        should be "Issue of building plan sanction+license"        (15 Oct 26)
+     Butterfly Dreams, Fire Provisional NOC
+        picked "Issue of Demand note and payment"                 (20 Aug 26)
+        should be "Issue fire NOC [South Block]"                  (28 Aug 26)
+- Walking to the end of the hierarchy cannot make that mistake, and it needs NO
+  per-approval exception. "Environmental Clearance -> Issue of Environmental
+  clearance" is NOT written into the program anywhere. If the project's
+  hierarchy or the display level changes, the sub-tree changes with it and the
+  chosen task follows automatically.
+
+Other rules that still apply:
+- Building Plan Sanction: because a project can have several (individual plots,
+  clubhouse, commercial), each is its own row, and each walks its OWN hierarchy
+  to its OWN last task - which is why the three rows can carry three dates.
+- If the last task carries no finish date, EDOS steps back through that same
+  approval's chain to the last task that does, and the report says so. It never
+  reaches outside the approval and never invents a date.
+- If an approval has no baseline date, THE CELL IS LEFT BLANK. Nothing is
+  fabricated.
+- For approvals with a "Layout" override in the configuration, the preferred
+  finishing tasks are the listed layout approval and work-order names. That
+  override names a real task explicitly; it is not a date and not a guess.
+- Every row's chosen task and the reason it was chosen are printed in
+  output/approval_validation.md, so the selection can always be checked against
+  the Excel.
+
+HOW THE ROWS ARE ORDERED:
+
+IF THE LIST CAME FROM THE PREVIOUS PPT (or from a pinned list for this project),
+THAT ORDER IS KEPT EXACTLY AS THE PREVIOUS DECK HAS IT. It is not re-sorted.
+- The previous deck's sequence is a business decision the deck records, so it is
+  the answer.
+- This matters most for an approval the current Excel has no record of: on a date
+  sort it would fall to the very bottom of the table, which reads as though it had
+  been dropped. Kept in place, it sits where the reader expects it, with its dates
+  blank.
+- Every name from the previous deck appears, in that order, with that wording.
+  Nothing is merged, renamed, generalised or dropped.
+
+OTHERWISE (the list came from this project's own approval branch, which has no
+meaningful order of its own):
+- ASCENDING BY ACTUAL / PROJECTED FINISH - earliest first.
+      21 Jan 27
+      02 Feb 27
+      03 Mar 27
+      ...
+- Sorting uses the very date printed in the table.
+- Sorting happens AFTER the correct last task and its date have been chosen, so
+  the order always reflects the dates actually shown.
+- Rows with NO Actual / Projected Finish date come AFTER all dated rows.
+- Rows with the same date, and the undated rows, keep their original order.
+- Sl.No is renumbered 1, 2, 3 ... down the page so the counter matches the order.
+- BASELINE FINISH IS NEVER USED FOR SORTING, and neither is the approval name.
+- Sorting removes nothing: every approval on the list is still shown.
+
+IF A PREVIOUS PPT IS UPLOADED BUT ITS APPROVAL LIST CANNOT BE READ:
+- EDOS says so loudly, in the run log and in approval_validation.md, and falls
+  back to this project's own approval branch. The row NAMES AND ORDER are then
+  the schedule's, not the previous deck's.
+- The usual cause: on the original hand-built decks the whole Approvals table is
+  a FLAT PICTURE with no text in it at all, so there is nothing to read. (Checked:
+  on those decks that slide contains one 24.68" x 6.47" PNG and only two pieces of
+  text, "APPROVALS STATUS" and the section number.)
+- That is how three separate rows - for example AAI NOC, HAL NOC and IAF & GFTS
+  NOC - end up replaced by whatever the schedule branch calls its own children,
+  such as "Airport NOC [BIAL]".
+- Two ways to get the previous deck's list honoured:
+     1. Use a previously GENERATED deck as the reference. Its Approvals slide is
+        a real table, so the names read back exactly.
+     2. Or pin the list for that project under "masterListByProject" in
+        approval_config.json.
+  There is no built-in list of approvals anywhere in the program. Nothing is
+  assumed about which approvals a project has.
+
+PINNED PER-PROJECT LISTS ["masterListByProject"]:
+- A pinned list exists for a project whose previous deck cannot be read - i.e.
+  whose Approvals table is a picture. It is transcribed from that project's own
+  old slide, exactly as that slide prints it, in its order.
+- It fixes only WHICH rows appear, their WORDING and their ORDER. Every date,
+  tick and status still comes from the Excel through the normal matching logic.
+- It is a FALLBACK, never an override. Order of precedence:
+     1. an uploaded previous PPT whose Approvals slide has real text  <- wins
+     2. the pinned list for this project
+     3. the project's own approval branch in its own Excel
+- The project-name key tolerates the usual spelling differences - hyphen, no
+  hyphen, en dash - so "TR Mills - Chamrajpet", "TR Mills Chamrajpete" and
+  "TR Mills – Chamrajpet" all resolve to the same entry.
+- The "match" hints beside each name only LOCATE a task in the Excel. They never
+  rename a row: the displayed name is always the pinned/previous-deck one.
+- ONE-TIME NOTE. Once a GENERATED deck exists for such a project, that deck's
+  Approvals slide IS a real table, so from then on the list is read from it
+  automatically. Take care not to feed back a deck that was generated BEFORE the
+  list was pinned - it carries the schedule's own wording, and because a readable
+  deck outranks the pinned list it would reinstate those names.
+- Sorting is done independently for each project, at the moment the table is
+  drawn, so it applies whichever of the three sources the list came from.
+
+When the page is omitted:
+- If the project has NO approvals at all, the page is omitted from the deck AND
+  from the Contents. A construction-phase project can legitimately have no
+  statutory approvals left to report, and an empty bordered table with a
+  Contents line pointing at it was worse than no page.
+
+What should NOT happen:
+- Missing approvals must NEVER be filled in with approvals belonging to another
+  project.
+- The same approval list must not be copied to every project.
+
+
+================================================================================
+13. 2 WEEK LOOK AHEAD PLAN
+================================================================================
+
+PAGE NAME: 2 Week Look Ahead Plan
+
+What this page shows:
+- The tasks due in the next two weeks, grouped by the people responsible.
+
+The columns:
+   Name | Status | Overall % complete | Baseline Finish | Actual/Proj Start |
+   Actual/Proj Finish | Task.TE Departments | Notes
+There is no "Line" number column - the rows are read top to bottom.
+
+Where the data comes from:
+- The uploaded Excel schedule.
+
+How activities are selected:
+- MILESTONES ARE EXCLUDED FIRST, before anything else. A milestone marks a
+  moment, not work anyone can be asked to do in the next fortnight, so it does
+  not belong on this page even when its date falls inside the window.
+     · A milestone is identified by THE EXPORT ITSELF, and BOTH of its duration
+       columns have to say zero:
+
+              Duration                 "0d"     AND
+              Duration [Elapsed day]   "0d"
+
+       ASTA keeps the two apart - Duration is counted in the task's working
+       time, the elapsed one in calendar days - so a row can read zero in one
+       and not the other. A real milestone is zero in both, and requiring both
+       is the stricter reading of "the export says this is a milestone".
+     · THE TEST IS OVER WHICHEVER DURATION COLUMNS THE EXPORT HAS, and every
+       one of them has to read zero:
+          both columns present -> both must be "0"
+          only one present     -> that one must be "0"
+       Exports differ. Most carry "Duration" and no elapsed column; the NH
+       Homestay export carries "Duration [Elapsed day]" and NO plain "Duration",
+       in which case that column IS the duration and is read as such.
+       lookahead_roles_validation.md says which case applied, under "Which
+       milestone test ran".
+     · Requiring a column the export does not have would make the test
+       impossible to satisfy, so NOTHING would count as a milestone and every
+       one of them would come back onto the page - silently. Carry both columns
+       in the ASTA export view to have both checked.
+     · THE TASK NAME IS NEVER USED. A real activity called "... Signoff", or one
+       sitting under a branch named "Milestone", still appears if the export
+       gives it a duration.
+     · If a duration cell is empty or unreadable, the activity is NOT treated
+       as a milestone - a bad export can never silently delete real work.
+     · Summary activities are unaffected and still appear as sub-headings.
+     · This removes rows from THIS PAGE ONLY. Milestones are not touched in the
+       Excel, and they still appear on the Project Overview, on the Tracker &
+       Schedule, and wherever else they are used - including as the date source
+       for the schedule phases.
+     · A group whose only task was a milestone is never created, so no empty
+       person heading or empty sub-heading is left behind.
+     · Every milestone removed is named in
+       output/lookahead_roles_validation.md, so the page can always be
+       reconciled against the export. Measured: Blue in Green 11 removed
+       [87 rows -> 76], One Tiny Flower 23, Shreegoan 20, Harohalli 12,
+       TMFT Ph3 4, Varthur 1.
+- The window is 14 days, measured on the ACTUAL / PROJECTED FINISH date.
+- ACTIVITIES THAT ARE 100% COMPLETE ARE EXCLUDED, before any date test.
+- Activities that have progressed (part complete) are included when they meet
+  the window.
+- One row per task and person. If the SAME TASK appears under more than one
+  responsibility level, it is consolidated into ONE task row rather than
+  repeated.
+
+How people are arranged:
+- People are GROUPED: a name is written once as a heading above its block of
+  tasks, not repeated on every row.
+- The role hierarchy is written as a grouped heading in the order
+  Head -> Accountable -> Responsible, indented, with equal neighbours merged.
+- Names are joined with the "|" separator.
+- Within a person's block, tasks that have progressed come first, then the
+  zero-progress ones.
+- People appear in the schedule's own order.
+- UNASSIGNED items go LAST.
+
+How the page is arranged:
+- Work is grouped into indivisible BLOCKS. A block is the person heading (when
+  it changes), the sub-heading for that group of work, and the task rows under
+  it.
+- Page breaks happen between blocks, never inside one. This is what stops a
+  page ending on a name or a sub-heading with its tasks overleaf.
+- A summary or activity heading with insufficient space below it moves to the
+  next page with its rows.
+- The table boundary ends at the LAST REAL ACTIVITY ROW - no empty rows and no
+  empty bordered space.
+- A single cell may wrap and grow taller when its text is long. The other cells
+  in the row are not resized unnecessarily because of it.
+- Body text 19 pt, headings 21 pt.
+
+Colours on this page:
+- People / name rows      #F7C7AC
+- Summary activity rows   #BFD8D8
+- Text on both bands      near-black (both fills are light)
+Status icons: tick for complete, half-circle for in progress, cross for not
+started.
+
+What should NOT happen:
+- A person heading must not appear at the bottom of a page without its activity
+  information.
+- 100% complete activities must not appear.
+- The same task must not appear several times for different roles.
+
+
+================================================================================
+14. CONSTRUCTION SCHEDULE / DESIGN & BUILD LOGIC
+================================================================================
+
+This section applies ONLY to the Design & Build project type.
+
+Input:
+- ONE Excel export view. There is NO separate construction schedule upload, and
+  EDOS does not ask for one. All design and construction activity is read from
+  that single export.
+- The Design & Build dashboard sheets, when present: "Red Flag Summary DB",
+  "Tracker DB", "Key Focus Area", "Schedule Design", "Schedule Build".
+
+How design and construction work are separated:
+- EDOS finds the project row in the export, then looks at its DIRECT CHILDREN
+  only. A child whose name starts or ends with "Design" is the design branch;
+  one whose name starts or ends with "Construction" is the construction branch.
+- Names like "Pre-Construction" and "Construction Documents" are deliberately
+  NOT treated as the construction branch.
+- Only one branch of each kind is used; a second is ignored and noted.
+
+Pages:
+- Red Flag Summary and Key Focus Area: same idea as Launch & Design, read from
+  the DB sheets, filtered to this project.
+- Tracker & Schedule 3A: the status grid plus the design timeline.
+- Schedule - Construction (3B): produced ONLY when the dashboard has painted
+  construction timeline months for this project.
+- Project Overview: uses THE SAME RENDERER as Launch & Design - the same seven
+  columns, the same 73:27 split, the same palette, the same Gantt, the same
+  Today line, the same legend, the same page-break rules. Design & Build only
+  chooses which rows to hand it. There is no second Project Overview renderer.
+  It additionally asks for NESTING COLOUR BARS; see below.
+- 2 Week Look Ahead: the same selection rules and the same drawing code as
+  Launch & Design, with two Design & Build differences, both opt-in arguments:
+  the heading reads "2 Week Look Ahead" (not "...Plan"), and EVERY page of the
+  section carries that same heading - there is no "(cont.)" on continuation
+  pages. Launch & Design keeps "2 Week Look Ahead Plan" and its "(cont.)".
+
+NO PROJECT CODE AND NO PROJECT NAME COLUMN:
+- The Red Flag Summary, the Tracker status grid, both timeline strips and the
+  Key Focus Area table carry neither a Project Code column nor a project-name
+  column. On a one-project deck both repeated the deck's own subject on every
+  row - the code is already on the cover and in the file name - and between
+  them they took 5.2"-6.2" of the 24.68" content band.
+- That width belongs to the columns that carry information, and the type sizes
+  were raised with it so the slides gained legibility rather than white space.
+- The timeline keeps its row-label column ("Actual/Projected" over "Baseline"),
+  which does carry information.
+
+KEY FOCUS AREA COLUMN ORDER:
+- Key Focus Area, then Responsible, then Accountable. The focus text leads
+  because it is the sentence the slide exists to deliver; the two names answer
+  "who", which matters after you know what.
+
+LEGEND PLACEMENT (every Design & Build slide that has one):
+- Pinned to the bottom-right corner: the right edge sits on the section title
+  bar's right edge (26.11") and the bottom edge on the foot of the squirrel
+  (14.53"). The legend measures itself and lays out leftwards and upwards from
+  that corner, so it is never positioned by a hand-tuned offset.
+- Where a slide carries TWO legends (Tracker & Schedule), the phase legend takes
+  the corner and the status legend is placed immediately to its left, by
+  subtracting the phase legend's own measured width. Both stand on the same
+  floor, and they cannot collide however many rows the workbook lists.
+- Colours, labels and the Projected / Baseline columns are the dashboard's own
+  and are not changed by any of this.
+
+NESTING COLOUR BARS ON THE PROJECT OVERVIEW:
+- A summary row's own colour is carried down the left of everything nested
+  beneath it, the way Asta Powerproject draws a summary over its tasks: ONE
+  continuous vertical bar running from the foot of the parent row to the foot of
+  its last descendant - that is, until the next row at the same level or
+  shallower.
+- Applied at EVERY depth, each level keeping its own colour. The bar sits in the
+  indent step that separates a parent's text from its children's.
+- The runs are worked out once over the whole row list and then clipped to each
+  page, so a phase whose tasks spill onto a continuation page keeps its bar on
+  that page too.
+- Launch & Design does not draw them.
+- Site Progress: registered only if the reference deck has a VISIBLE slide with
+  that heading (hidden slides are skipped).
+- NO APPROVALS STATUS PAGE, ever.
+
+Project Overview row limit for Design & Build:
+- At most 16 rows. Rows are added a WHOLE LEVEL AT A TIME; if the next level
+  would take the table past 16 rows, that level is not expanded. No row is cut
+  short and no font is shrunk to force it.
+- Zero-duration milestone rows are excluded, as the reference deck does.
+
+Extra pages:
+- Extra slides copied from the reference deck follow the same formatting and the
+  same page-break rules. A copied slide keeps its own typography, and is marked
+  internally as a copy so the layout checks do not judge it by EDOS's rules.
+
+SLIDES TAKEN VERBATIM FROM THE PREVIOUS PPT:
+- These four are COPIED, not redrawn. Nothing about them is changed: layout,
+  text, logo, fonts, positions, spacing, images, graphics, colours and dimensions
+  all come across exactly as they are, and the copy carries the previous deck's
+  own picture files byte for byte.
+     Cover / front page       (the only edit anywhere: the cover DATE is advanced)
+     Land Acquisition Status  (unless a newer Land slide was uploaded)
+     Master Plan              (omitted entirely if the previous deck has none)
+     THANK YOU - the closing slide
+- The closing slide is found by POSITION: it is the last slide of the previous
+  deck, and it replaces the last slide of the generated one. Position rather than
+  wording, because the two decks lead with different text - the generated slide
+  starts with "THANK YOU" and the previous deck with the contact line - so no
+  single search term finds both.
+- No transform is applied to it. If the previous deck has no closing slide, the
+  generated one is simply left in place.
+- If no previous PPT is uploaded at all, EDOS's own versions of these slides are
+  used and the run log says so.
+
+
+================================================================================
+15. PAGE BREAK AND TABLE FITTING RULES
+================================================================================
+
+These rules apply across the deck.
+
+Measure first, then place:
+- Every row's height is worked out BEFORE it is put on the page, by wrapping its
+  text on whole words at the real font size.
+- A row takes the height of its tallest cell plus a constant padding.
+- Words are never broken in the middle.
+
+Never split a row:
+- A row that does not fit starts the next page instead of being cut in half.
+
+Never orphan a heading:
+- KEY FOCUS AREA: a group band (CRITICAL / AT RISK) is never left at the foot of
+  a page without its first row.
+- PROJECT OVERVIEW: a section heading needs at least its first TWO rows to fit,
+  or the whole section moves to the next page.
+- 2 WEEK LOOK AHEAD: page breaks happen only between whole blocks, so a person
+  heading or a sub-heading can never be separated from its tasks.
+
+Table boundaries:
+- Frames and borders stop at the last row that has content. No page ever shows
+  an empty bordered area or blank filler rows.
+
+The mascot line:
+- The squirrel sits near the bottom left. Tables must finish ABOVE it with a
+  small clear margin, and a table border may never cross that line.
+
+Filling a page:
+- Pages are filled to about 92% of the measured available space. PowerPoint
+  treats a row height as a MINIMUM and the exact wrap depends on the installed
+  font, so the small reserve absorbs that drift.
+
+Fonts and fitting, in priority order:
+   1. Grow the row height.
+   2. Only then reduce the font.
+   3. Never below the minimum readable size.
+   4. Never enlarge the slide.
+- On Key Focus Area and Project Overview the body font is NEVER reduced.
+
+
+================================================================================
+16. COLOUR RULES
+================================================================================
+
+Brand and page furniture:
+- The accent colour is taken from the reference PPT's theme when one is
+  uploaded, so the deck matches the customer's brand. Otherwise the built-in
+  TotalEnvironment palette is used.
+- Page title bar        the darkest accent shade
+- Section number badge  the mid accent shade
+- Title bar text        white
+
+Status colours (defined ONCE and used everywhere a status is shown, so two
+pages can never drift into similar-but-different shades):
+- Good / Completed      #A9D08E
+- At Risk / Amber       #FFAA33
+- Critical / Red        #EE4B2B
+The Key Focus Area band colours are these same red and amber values.
+
+2 Week Look Ahead:
+- People / name rows        #F7C7AC
+- Summary activity rows     #BFD8D8
+- Text on both bands        #1A1A1A
+- This page uses the deck's standard section-header colours for its title bar.
+
+Project Overview level colours:
+- Level 1 (project / top row)   fill #D99370, text white
+- Level 2 (section heading)     fill #BFD8D8, text #D99370
+- Level 3 (activity)            fill #9F9F5F, text white
+- Table header                  white fill, black text
+- Grid lines                     #D9D9D9
+
+Project Overview Gantt:
+- Baseline           #FFD000  (yellow)
+- Actual Progress    #5B9BD5  (blue)
+- Projection         #008A3E  (green)
+- Today marker       #C8281E  (red)
+- Month axis         #BFBFBF
+- Year band ground   #D9D9D9
+
+Tracker timeline phase colours:
+- Read from the Summary Dashboard "Schedule" sheet legend for each phase - the
+  Actual tone and the lighter Baseline tone. They are NOT built into the
+  program. If a phase colour cannot be read, a neutral grey pair is used.
+
+Tracker status grid:
+- Symbols, colours, fonts and sizes come from the dashboard sheet's own legend,
+  with optional overrides in tracker_schedule_config.json. Currently
+  "Completed" is overridden to a green tick.
+- The legend printed on the slide has the same overrides applied, so the key
+  always matches the glyphs drawn.
+
+Approvals:
+- Stage tick        green
+- Stage cross       red
+- The Actual / Proj. Finish cell is tinted pale green when the approval has
+  been issued.
+
+Note on "title line colour":
+- There is no title underline colour in the code. The page title is a filled
+  bar, not a rule. A lighter bar colour (#C65911) existed briefly for the
+  2 Week Look Ahead and was reverted; that page now uses the standard
+  section-header colours.
+
+
+================================================================================
+17. DATE LOGIC
+================================================================================
+
+WHERE THE FOUR BASIC DATES COME FROM
+Every date in the deck begins as one of these four Excel columns:
+   Baseline Start            -> the "Baseline Start" column
+   Baseline Finish           -> the "Baseline Finish" column
+   Actual / Projected Start  -> the "Actual / Projected Start" column
+   Actual / Projected Finish -> the "Actual / Projected Finish" column
+There is no separate "Actual Start" or "Actual Finish" column in this export;
+the Actual / Projected pair is the only start/finish pair read.
+
+The report date ("as at" date):
+- The date typed on the form; if none, today's date. It drives the cover date
+  and the Today line, so the two can never disagree.
+
+Summary / heading rows:
+- A heading row carries ASTA's own rolled-up dates and percentage. EDOS uses
+  those values as they are and does not re-aggregate them.
+
+THE SIX TIMELINE PHASES - HOW EACH DATE IS CHOSEN
+All of this is written in tracker_schedule_config.json, not in the program.
+Activities are matched to a phase by exact name, then by alias, then by keyword
+(whole words only).
+
+1. LAND ACQUISITION
+   Start   : the BASELINE START of the schedule's own "Land Acquisition" summary
+             row, used exactly as recorded - never derived, never shifted.
+             (The child activities start later, so using the earliest child
+             would begin the bar months late.)
+   Finish  : the Actual / Projected FINISH of the controlling
+             "Definitive Agreements - JDA" task.
+   Notes   : Neither the Project Acquisition summary's finish nor any Approvals,
+             LOD, Sales Launch or Go To Market date may supply either end. That
+             task is a DATE SOURCE ONLY - it is never a legend entry.
+             This phase is drawn full span.
+
+1a. LAND ACQUISITION IS THE STARTING ANCHOR
+   Land Acquisition is the fixed start of this part of the timeline. Its dates
+   are its own and are never moved to suit the phases after it. Everything in
+   rule 2 hangs off ITS finish - not the other way round.
+
+2. LOD 100/200  <-- THIS PHASE CLOSES THE GAP BEFORE APPROVALS
+   Start   : the first day of the month immediately AFTER Land Acquisition
+             finishes. If Land Acquisition finishes in June, LOD starts in July.
+   Finish  : the last day of the month immediately BEFORE Approvals start - so
+             LOD covers the whole waiting period - but never less than one whole
+             month.
+   Notes   : THERE IS NEVER A BLANK STRETCH BETWEEN LAND ACQUISITION AND
+             APPROVALS. The idle time in the source data is shown as LOD
+             100/200, because that is the design work that has to happen in the
+             interval; a blank gap would tell the reader nothing.
+
+             Worked example. Land Acquisition finishes June 2027 and Approvals
+             are scheduled to start October 2027:
+                  July 2027       -> LOD 100/200
+                  August 2027     -> LOD 100/200
+                  September 2027  -> LOD 100/200
+                  October 2027    -> Approvals
+             The chart never shows Land Acquisition -> blank -> Approvals.
+
+             If Approvals are already under way before Land Acquisition
+             finishes - which happens in real schedules - there is no gap to
+             fill. LOD then takes its one month, the real Approvals start is
+             kept, and the overlap is reported. Where the two genuinely run at
+             the same time and the month scale leaves no separate cell for each,
+             they share a cell and the report says which two phases and why.
+
+             The two rows are worked out separately, each from its own dates:
+             the baseline row from the Baseline finish of Land Acquisition and
+             the Baseline start of Approvals, the projected row from theirs. If
+             a row has no Land Acquisition finish date at all, that row is left
+             alone and the missing date is reported - nothing is invented.
+
+   Fallback: where the phase is not being placed by the rule above, its finish
+             comes from the "Schematic Master Plan Signoff" milestone (or one of
+             the listed alternatives), else the latest finish of its matched
+             activities.
+
+3. APPROVALS
+   Start   : the Excel's own earliest projected start for the approval branch.
+             It is never pushed later.
+   Finish  : the highest-priority statutory approval. RERA is the configured
+             priority. If RERA is complete, its ACTUAL finish is used. If RERA
+             exists but is not complete, EDOS says so and uses the next rule:
+             the latest actual finish among the approvals that ARE complete;
+             and if none is complete, the latest projected finish.
+             The baseline finish comes from the SAME approval that supplied the
+             actual finish - that is what shows the real slip.
+   Notes   : Its FINISH is then moved to the last day of the month that is two
+             months before Sales launch, so that Approvals ends immediately
+             before Marketing Collateral and no empty month is left anywhere in
+             Approvals -> Marketing Collateral -> Sales launch. This is allowed
+             to CHANGE the approval finish date: the launch date has priority,
+             and an old approval finish is not kept if keeping it would leave a
+             gap. The START is never moved - it is real schedule data.
+             If the start is already later than that boundary, the two genuinely
+             overlap, so the real dates are kept and the overlap is reported.
+             This phase is drawn full span.
+
+4. MARKETING COLLATERAL
+   Start   : the first day of the month immediately before Sales launch's month.
+   Finish  : the last day of that same month.
+   Notes   : It occupies EXACTLY ONE MONTH, and exactly the month before Sales
+             launch. It never overlaps Sales launch and never leaves a gap
+             before it. The number of months is set in the configuration
+             (timeline.anchor.precede), not in the program.
+
+5. SALES LAUNCH  <-- THE ANCHOR OF THE WHOLE TIMELINE
+   Date    : the month of the "GO TO MARKET" task (also matched as
+             "Go-to-Market" or "GTM"). The bar fills that WHOLE MONTH, from its
+             first day to its last day.
+   Notes   : SALES LAUNCH IS THE FIXED POINT. Everything else in the launch
+             window is placed relative to it - Approvals and Marketing
+             Collateral before it, Site Establishment after it - instead of
+             Sales launch being pushed along by whatever came before.
+             It is shown in the EXACT month of Go To Market. It is never moved
+             to the month before or the month after, however late an earlier
+             phase finishes, and it is never worked out from any other
+             milestone. If an earlier bar would run into it, that earlier bar
+             is the one that stops.
+             The BASELINE row and the ACTUAL / PROJECTED row are anchored
+             SEPARATELY, each on its own Go To Market date: the baseline row on
+             the task's Baseline date and the projected row on its Actual /
+             Projected date. Neither is ever copied from or derived from the
+             other, which is exactly how a slipped launch becomes visible - the
+             two green blocks sit in different months.
+             If one of the two rows has no Go To Market date at all, that row is
+             left as the ordinary rules resolved it and the absence is reported.
+             A date is never borrowed from the other row.
+             "GO TO MARKET" IS NOT A LEGEND ENTRY, NOT A CATEGORY AND NOT A
+             SEPARATE BAR. The bar is always labelled "Sales launch". Go To
+             Market is only the source task that supplies the date.
+
+6. SITE ESTABLISHMENT & MOBILIZATION
+   Start   : the first day of the month immediately after Sales launch's month,
+             so there is no empty month between the two.
+   Finish  : taken DIRECTLY from the activity "Site Establishment and Site
+             Mobilization" - its BASELINE FINISH for the baseline row and its
+             ACTUAL / PROJECTED FINISH for the projected row. The two are never
+             swapped or cross-used, and no other milestone is ever substituted.
+   Notes   : Matching activities alone found only
+             "Excavation & Dumper Mobilization", which ends six weeks earlier
+             and made the bar stop short. The summary row IS the phase.
+             The bar is NEVER SHORTENED to fit the visible timeline. If the
+             source activity finishes in, say, November, the bar visibly runs
+             through November, and the month axis is extended so it can. It is
+             not stretched either: if the source finish is earlier than the
+             month after Sales launch, the schedule and the launch date
+             genuinely disagree, so the real finish is kept and the conflict is
+             reported rather than quietly trimmed.
+             This phase is drawn full span.
+
+GENERAL DATE RULES
+- A bar is never drawn backwards: if a finish lands before its start, the finish
+  is set equal to the start.
+- A guard never inverts a bar. If pushing a phase later would make it end before
+  it begins, the real dates are kept and the decision is reported.
+- Dates produced by a configuration rule (such as "start after the previous
+  phase") are listed in the validation report under "Dates derived from a
+  declared configuration rule". These are RULES WRITTEN IN THE CONFIG FILE, not
+  estimates by the program.
+- A milestone that cannot be found at all is REPORTED AS MISSING and the phase
+  is left undated. NOTHING IS EVER ESTIMATED OR INVENTED.
+
+OTHER DATES
+- Project Overview: Baseline Finish, Actual / Projected Start and Actual /
+  Projected Finish are printed straight from those Excel columns. Elapsed days
+  are counted from start to finish inclusive of both ends; elapsed months are
+  those days divided by 30.4375.
+- Approvals Status: see section 12.
+- 2 Week Look Ahead: the 14-day window is measured on Actual / Projected Finish.
+- Cover date: the report date. Only the paragraph containing "Update" or a
+  month-and-year is touched, so a project code or acreage on the cover is never
+  altered by mistake.
+
+
+================================================================================
+18. PEOPLE / RESPONSIBLE / ACCOUNTABLE / HEAD LOGIC
+================================================================================
+
+Where the names come from:
+- The Excel schedule's own "Responsible", "Accountable" and "Head" columns.
+- If a row has no Responsible name, the legacy "Task.TE Team" column is used
+  instead.
+- On the Key Focus Area page the names come from the Summary Dashboard's own
+  Responsible and Accountable columns.
+
+The role order, as implemented:
+- Head -> Accountable -> Responsible, written as a grouped, indented heading
+  above the block of tasks it applies to.
+- Names within a heading are joined with the "|" separator.
+- Where neighbouring levels hold the same name, they are merged rather than
+  repeated.
+
+Grouping and consolidation:
+- Tasks are grouped by person, so a name is written ONCE per group instead of on
+  every row.
+- IF THE SAME TASK APPEARS UNDER MORE THAN ONE RESPONSIBILITY LEVEL, IT IS
+  CONSOLIDATED INTO ONE TASK ROW. The task is not repeated for each role.
+- Within a person's block, progressed tasks are listed before zero-progress
+  tasks.
+- People appear in the schedule's own order.
+- UNASSIGNED work is placed LAST.
+
+Key Focus Area:
+- Responsible and Accountable are printed as they appear on the dashboard,
+  including multiple names in one cell.
+- "Team" is the column immediately to the LEFT of "Key Focus Area" on the sheet.
+  (It was previously labelled "Major Heading".)
+
+
+================================================================================
+19. PROJECT-SPECIFIC LOGIC
+================================================================================
+
+EDOS builds ONE DECK FOR ONE PROJECT. Everything on it must belong to that
+project.
+
+How the project is identified:
+1. The project code typed on the form, if any.
+2. Otherwise a code found at the start of the top row of the Excel export
+   (for example "0116 - Meena and KrishnaSai Residence").
+3. Otherwise, a single clear best match against the dashboard's project list.
+   If two dashboard rows match equally well, EDOS REFUSES TO GUESS: the
+   dashboard-driven pages are omitted and the operator is asked to enter the
+   code.
+
+The identity test:
+- If a project code is known, THE CODE DECIDES. The name is not consulted at
+  all. ("0131" and "131" are treated as the same code.)
+- Only a row with no code at all falls back to name matching, and then only
+  against the spellings actually seen for this project.
+- project_aliases.json lists alternative spellings that mean the same project
+  (for example Shreegoan / Poinciana / ShreeGaon / Shreegaon).
+
+Matching priority for tasks and statuses:
+- PROJECT IDENTITY FIRST, task or activity identity second.
+- The Tracker status grid and the Red Flag grid both find the project's row by
+  CODE first, and only fall back to the name when there is no code. If the same
+  activity name exists in several projects, the project context decides which
+  row is read.
+
+TWO LEVELS OF NAME MATCHING - THIS IS IMPORTANT
+EDOS deliberately uses two different name matchers:
+
+1. THE FORGIVING MATCHER - used by the Red Flag row, the Tracker row, the
+   approvals sheet lookup and the configuration lookups.
+   It exists because the same project is spelled differently in each file:
+   "ItQE Ph 2c & 3a [...]" vs "ITQE Phase 2c & 3a", "OtR Phase 2" vs
+   "OTR - Ph2". It scores shared words and allows for spelling drift, and it
+   picks the BEST-scoring row rather than any row that scores at all.
+
+2. THE STRICT MATCHER - used by KEY FOCUS AREA only.
+   Exact code, exact name, or an exactly listed alias. Nothing else.
+   It exists because Key Focus Area lists named people against named
+   commitments, so a false positive is not a cosmetic problem - it puts one
+   team's obligations on another project's slide. And the dashboard genuinely
+   contains three "Nandi Hills" projects and two "Violet Hill" phases, which
+   the forgiving matcher cannot tell apart by name.
+
+If a project's Key Focus rows come back empty, the cause is almost always that
+the dashboard spells the project differently from the export AND no project code
+was entered. The fix is to enter the project code, or to add the spelling to
+"strictOnly" in project_aliases.json. The validation report names the rows it
+refused and why.
+
+Pages that are project-specific (and are filtered before anything is drawn):
+- Red Flag Summary
+- Key Focus Area
+- Tracker & Schedule (both the status grid and the timeline)
+- Project Overview
+- Approvals Status
+- 2 Week Look Ahead Plan
+- Schedule - Construction (Design & Build)
+
+The contamination gate:
+- Before the deck is written, EDOS checks the records that are ACTUALLY GOING TO
+  BE DRAWN, section by section.
+- If any record belongs to another project, GENERATION STOPS WITH AN ERROR and
+  names the offending records and the reason. The deck is not produced.
+- The reasoning is deliberate: omitting a section is recoverable, but putting
+  another project's status on this project's slide is not.
+
+Project-specific exceptions actually present in the configuration:
+- approval_config.json holds a per-project master approval list for ONE project
+  only ("Byatarayanapura [Mall Of Asia]"). Every other project's approvals come
+  from its reference PPT or its own Excel branch.
+- edos_config.json holds legacy per-project approval name lists, used only as a
+  fallback structure.
+- No other project-specific behaviour is hard-coded anywhere.
+
+
+================================================================================
+20. IMPORTANT RULES / DO NOT BREAK
+================================================================================
+
+1. NEVER MIX PROJECTS. One deck, one project. The contamination gate stops
+   generation rather than shipping mixed data.
+2. NEVER INVENT A DATE OR A STATUS. If the source has no value, leave it blank
+   and report it.
+3. THE SUMMARY DASHBOARD ROW IS THE STATUS OF RECORD for the Red Flag and
+   Tracker grids. The schedule is only a fallback for cells the dashboard leaves
+   blank.
+4. STATUS IS NEVER INFERRED from a date being present, from date proximity, or
+   from a task or project name.
+5. CONTENTS IS ALWAYS BUILT FROM THE PAGES ACTUALLY GENERATED. Never hard-code a
+   section name; never list a page that is not there.
+6. "GO TO MARKET" IS NOT A GANTT CATEGORY. It is the source task that determines
+   the Sales Launch date. The bar is always labelled "Sales launch".
+7. THE SIX TIMELINE PHASES AND THEIR ORDER ARE FIXED: Land Acquisition,
+   LOD 100/200, Approvals, Marketing Collateral, Sales launch, Site
+   Establishment & Mobilization.
+8. ONE CONTINUOUS BAR PER PHASE. Never two bars for the same phase, never a
+   fragment, never out of order.
+9. A BAR NEEDS A REAL START DATE. No start, no bar. A bar is never stretched
+   from the left edge to fake an earlier start.
+10. KEY FOCUS TEXT IS NEVER TRUNCATED, SUMMARISED OR REWRITTEN to fit a slide.
+11. COLUMN WIDTHS ARE FIXED per table - identical on every row and every
+    continuation page.
+12. NEVER SHRINK THE BODY FONT on Key Focus Area or Project Overview. Grow the
+    row instead.
+13. NO TABLE MAY OVERLAP THE SQUIRREL or run off the slide.
+14. A HEADING IS NEVER ORPHANED at the foot of a page without its rows.
+15. THE TABLE BOUNDARY ENDS AT THE LAST REAL ROW. No filler rows, no empty
+    bordered space.
+16. DESIGN & BUILD NEVER HAS AN APPROVALS STATUS PAGE.
+17. DESIGN & BUILD NEEDS ONE EXCEL EXPORT ONLY. Never ask for a separate
+    construction schedule.
+18. PROJECT OVERVIEW AND 2 WEEK LOOK AHEAD USE ONE RENDERER for both project
+    types. There must never be a second copy that can drift.
+19. APPROVAL LISTS ARE PROJECT-SPECIFIC. Never fill a gap with another project's
+    approval.
+20. A COMPLETED ACTIVITY IS NOT GIVEN A STATUS COLOUR in Project Overview. Level
+    colour only.
+21. EDOS NEVER WRITES TO THE SOURCE EXCEL FILES.
+
+
+================================================================================
+21. KNOWN LIMITATIONS OR SPECIAL CASES
+================================================================================
+
+Things the source data does not provide:
+- The export has no schedule "data date", so the report date falls back to the
+  date typed on the form, or today.
+- The export has no float or critical-path information, so no activity is
+  flagged as critical from the schedule.
+- The export has no approval status column; approval progress is worked out from
+  the approval's own activities.
+
+Data gaps that show up on the slides:
+- A phase with a BASELINE START but no BASELINE FINISH is drawn from its real
+  start and left there. It is listed under "Baseline data gaps in the source
+  schedule" in schedule_layout_validation.md. Adding the finish date to the
+  Excel makes the bar extend automatically.
+- A phase with NO BASELINE START cannot be positioned, so no baseline bar is
+  drawn for it and the Baseline row appears to begin at the first phase that has
+  one. This is a missing date in the schedule, not a drawing fault, and it is
+  reported the same way.
+  (On One Tiny Flower, for example, Land Acquisition has a baseline start but no
+  baseline finish, and LOD 100/200 has a baseline finish but no baseline start.)
+
+Row and page limits:
+- Key Focus Area: 24 Critical rows and 28 At Risk rows maximum. Extra rows are
+  dropped from the end and counted in the report.
+- Design & Build Project Overview: 16 rows maximum, expanded a whole level at a
+  time.
+
+Reference-deck dependencies:
+- Land Acquisition Status and Master Plan cannot be generated from Excel. Without
+  a reference PPT they remain placeholders; with one that lacks those slides,
+  the pages are omitted.
+- Slides copied from a reference deck keep the customer's own typography and are
+  exempt from EDOS's layout rules by design.
+
+Rendering notes:
+- PowerPoint treats a row height as a MINIMUM, and the exact text wrap depends
+  on the installed fonts. Pages are therefore filled to about 92% of the
+  available space to absorb that difference.
+- The three required fonts must be installed for the deck to look correct. EDOS
+  warns if they are not.
+
+Known reporting inconsistency:
+- key_focus_layout_validation.md currently reports the geometry of the FIRST Key
+  Focus page only, even when the section runs to several pages. The slides
+  themselves are correct; only that report under-reports the page count.
+
+Optional / trial features:
+- The Project Overview display level (Major / Level 1-4 / Custom) is opt-in. Left
+  at "Default", the automatic selection is used and the display-level module is
+  not involved at all.
+
+================================================================================
+END OF DOCUMENT
+================================================================================

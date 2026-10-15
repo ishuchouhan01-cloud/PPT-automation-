@@ -1,0 +1,532 @@
+{
+  "_comment": [
+    "Configuration for the Approvals slide, which is generated ENTIRELY from the ASTA Excel export.",
+    "Approval Status.xlsx is no longer used. Future projects should only need changes HERE.",
+    "",
+    "BRANCH DETECTION — the approval branch is found by NAME, never by row number or depth (it sits at",
+    "depth 1 in Harohalli, 2 in Blue in Green/TMFT and 3 in Violet Hill).",
+    "  branch.primary / branch.aliases : names that identify the statutory-approval branch",
+    "  branch.exclude                  : look-alike branches that must NOT be used — notably",
+    "                                    'Approval Drawings / Details', which is a DESIGN deliverable",
+    "                                    branch (drawings), not statutory approvals.",
+    "  Only the activities IMMEDIATELY BELOW the branch become rows (one approval = one row).",
+    "  childExclude drops non-approval children such as drawing/documentation/closure-milestone rows.",
+    "",
+    "STAGE COLUMNS — the four tick columns are matched against the approval's own activities by",
+    "keyword; a tick is shown only when the matched activity is 100% complete.",
+    "",
+    "FINISH ACTIVITY — the Actual/Projected Finish comes from the approval's completion activity,",
+    "chosen in the declared priority order (Issued → Approved → Sanction → Certificate → Clearance →",
+    "the last activity in the branch). Baseline Finish comes from that same activity; if it has none,",
+    "the cell is left blank. Nothing is ever fabricated — unresolved items are listed in",
+    "approval_validation.md.",
+    "",
+    "overrides lets a specific approval name declare its own preferred finish activity, e.g. Layout."
+  ],
+  "branch": {
+    "primary": [
+      "Approvals [Pre-Construction]",
+      "Approvals [Pre Construction]"
+    ],
+    "aliases": [
+      "Statutory Approvals",
+      "Approvals",
+      "Approval Package",
+      "Approval Activities",
+      "Approvals [Pre-Con]"
+    ],
+    "exclude": [
+      "Approval Drawings / Details",
+      "Approval Drawings",
+      "Approval Drawings / Details [LoD 200]",
+      "Approval Drawings / Details [LoD 300]"
+    ],
+    "minChildren": 2
+  },
+  "childExclude": [
+    "drawings",
+    "drawing",
+    "documentation",
+    "closure milestone",
+    "closure miles",
+    "drawings and details",
+    "documents"
+  ],
+  "stages": {
+    "drawings": [
+      "document submission",
+      "documents with drawing",
+      "documents collection",
+      "drawing submission",
+      "data collection",
+      "documentation",
+      "documents"
+    ],
+    "application": [
+      "scrutiny",
+      "application",
+      "submit data",
+      "submission to",
+      "site visit",
+      "site inspection",
+      "agenda"
+    ],
+    "fee": [
+      "fee payment",
+      "demand note",
+      "payment"
+    ],
+    "issued": [
+      "issue",
+      "issued",
+      "approved",
+      "approval",
+      "sanction",
+      "certificate",
+      "clearance",
+      "proceedings"
+    ]
+  },
+  "finishPriority": [
+    "issuance",
+    "registration",
+    "registered",
+    "issued",
+    "issue of",
+    "issue",
+    "approved",
+    "approval",
+    "sanction",
+    "certificate",
+    "clearance"
+  ],
+  "overrides": [
+    {
+      "match": "layout",
+      "comment": "Layout special case — prefer the approval/work-order activity, else the final completed activity in the Layout branch.",
+      "preferredFinish": [
+        "Layout Approval + Work Order",
+        "Layout approval with work order",
+        "Layout Approval",
+        "Layout Approved",
+        "Layout Plan Sanction"
+      ]
+    }
+  ],
+  "expected": [
+    "Water NOC",
+    "Fire NOC",
+    "Layout Plan Sanction",
+    "Building Plan Sanction",
+    "CFE",
+    "Consent for Establishment",
+    "MOEF",
+    "RERA",
+    "Drainage NOC",
+    "Power Approval",
+    "Environmental Clearance"
+  ],
+  "masterListComment": [
+    "PER-PROJECT approval lists. There is NO global list: the previous PPT for a project is the source of truth for",
+    "WHICH approvals appear, how many, their names and their order, and different projects legitimately differ.",
+    "",
+    "Precedence, highest first:",
+    "  1. the uploaded previous/reference PPT for THIS project — read off its own Approvals Status slide;",
+    "  2. masterListByProject, when a key matches this project's name — a pinned list for a project whose previous",
+    "     deck is not being uploaded, transcribed from that project's own old PPT;",
+    "  3. the project's own statutory approval branch in ITS OWN Excel schedule.",
+    "",
+    "Never a list borrowed from another project. Step 3 is per-project too — it reads that project's schedule — and",
+    "the report says plainly when it was used, because a schedule-derived list can be renamed or merged by the",
+    "planner and is not what the business tracks.",
+    "",
+    "'name' is what the slide prints and is never taken from the Excel. 'match' locates the task and never renames.",
+    "A hint may be a string, an array (all terms), or {all, any, none}; terms of three characters or fewer match as",
+    "whole words. Hints are tried in order, first hit wins.",
+    "",
+    "WHY \"TR Mills - Chamrajpet\" IS PINNED HERE.",
+    "That project's previous deck stores its ENTIRE Approvals table as a flat PNG picture: slide 8 holds one",
+    "24.68in x 9.92in image and no table, and the string \"AAI\" appears nowhere in any of the file's 98 parts.",
+    "The 12 approval names it prints therefore cannot be read out of it by any amount of parsing. They are",
+    "transcribed here from that slide exactly as it shows them, in its order.",
+    "",
+    "This entry fixes only WHICH rows appear, their WORDING and their ORDER. Every date, tick and status still",
+    "comes from the Excel through the normal matching logic. The match hints below only LOCATE a task in the",
+    "export - they never rename a row - and they are the same hints already proven on the other project that",
+    "tracks the same 12 statutory approvals.",
+    "",
+    "It is a FALLBACK, not an override: an uploaded previous PPT whose Approvals slide has real text always wins.",
+    "Once a GENERATED deck exists for this project its Approvals slide IS a real table, so from then on the list",
+    "is read from the previous deck automatically and this entry stops being consulted."
+  ],
+  "masterListByProject": {
+    "Byatarayanapura [Mall Of Asia]": [
+      {
+        "name": "AAI NOC",
+        "match": [
+          "AAI NOC",
+          "AAI"
+        ]
+      },
+      {
+        "name": "HAL NOC",
+        "match": [
+          "HAL NOC",
+          "HAL"
+        ]
+      },
+      {
+        "name": "IAF & GFTS NOC",
+        "match": [
+          "IAF & GFTS NOC",
+          "IAF",
+          "GFTS",
+          "GETS"
+        ]
+      },
+      {
+        "name": "Water NOC",
+        "match": [
+          "Water NOC",
+          "Water Supply"
+        ]
+      },
+      {
+        "name": "Power NOC",
+        "match": [
+          "Power NOC",
+          "Power Supply"
+        ]
+      },
+      {
+        "name": "Development Plan",
+        "match": [
+          [
+            "development plan",
+            "issue"
+          ],
+          "development plan",
+          "dp sanction"
+        ]
+      },
+      {
+        "name": "Environmental Clearance",
+        "match": [
+          [
+            "environmental clearance",
+            "issue"
+          ],
+          "environmental clearance",
+          "moef"
+        ]
+      },
+      {
+        "name": "CFE",
+        "match": [
+          "CFE",
+          "Consent for Establishment"
+        ]
+      },
+      {
+        "name": "Fire NOC",
+        "match": [
+          [
+            "fire",
+            "noc"
+          ],
+          "fire noc",
+          "fire"
+        ]
+      },
+      {
+        "name": "Building Plan-Residential",
+        "match": [
+          {
+            "all": [
+              "issue of building plan sanction"
+            ],
+            "none": [
+              "ch",
+              "clubhouse",
+              "club house",
+              "commercial"
+            ]
+          },
+          {
+            "all": [
+              "issue of building plan"
+            ],
+            "none": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          },
+          {
+            "all": [
+              "building plan sanction",
+              "residential"
+            ],
+            "none": [
+              "drawings",
+              "details",
+              "documentation",
+              "documents",
+              "submission",
+              "package"
+            ]
+          },
+          {
+            "all": [
+              "building plan sanction"
+            ],
+            "none": [
+              "drawings",
+              "details",
+              "documentation",
+              "documents",
+              "submission",
+              "package",
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Building Plan-Club House",
+        "match": [
+          {
+            "all": [
+              "issue of building plan sanction"
+            ],
+            "any": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          },
+          {
+            "all": [
+              "issue of building plan"
+            ],
+            "any": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          },
+          {
+            "all": [
+              "building plan sanction"
+            ],
+            "any": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ],
+            "none": [
+              "drawings",
+              "details",
+              "documentation",
+              "documents",
+              "submission",
+              "package"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "RERA",
+        "match": [
+          "RERA"
+        ]
+      }
+    ],
+    "TR Mills - Chamrajpet": [
+      {
+        "name": "AAI NOC",
+        "match": [
+          "AAI NOC",
+          "AAI"
+        ]
+      },
+      {
+        "name": "HAL NOC",
+        "match": [
+          "HAL NOC",
+          "HAL"
+        ]
+      },
+      {
+        "name": "IAF & GFTS NOC",
+        "match": [
+          "IAF & GFTS NOC",
+          "IAF",
+          "GFTS",
+          "GETS"
+        ]
+      },
+      {
+        "name": "Water NOC",
+        "match": [
+          "Water NOC",
+          "Water Supply"
+        ]
+      },
+      {
+        "name": "Power NOC",
+        "match": [
+          "Power NOC",
+          "Power Supply"
+        ]
+      },
+      {
+        "name": "Development Plan",
+        "match": [
+          [
+            "development plan",
+            "issue"
+          ],
+          "development plan",
+          "dp sanction"
+        ]
+      },
+      {
+        "name": "Environmental Clearance",
+        "match": [
+          [
+            "environmental clearance",
+            "issue"
+          ],
+          "environmental clearance",
+          "moef"
+        ]
+      },
+      {
+        "name": "CFE",
+        "match": [
+          "CFE",
+          "Consent for Establishment"
+        ]
+      },
+      {
+        "name": "Fire NOC",
+        "match": [
+          [
+            "fire",
+            "noc"
+          ],
+          "fire noc",
+          "fire"
+        ]
+      },
+      {
+        "name": "Building Plan-Residential",
+        "match": [
+          {
+            "all": [
+              "issue of building plan sanction"
+            ],
+            "none": [
+              "ch",
+              "clubhouse",
+              "club house",
+              "commercial"
+            ]
+          },
+          {
+            "all": [
+              "issue of building plan"
+            ],
+            "none": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          },
+          {
+            "all": [
+              "building plan sanction",
+              "residential"
+            ],
+            "none": [
+              "drawings",
+              "details",
+              "documentation",
+              "documents",
+              "submission",
+              "package"
+            ]
+          },
+          {
+            "all": [
+              "building plan sanction"
+            ],
+            "none": [
+              "drawings",
+              "details",
+              "documentation",
+              "documents",
+              "submission",
+              "package",
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Building Plan-Club House",
+        "match": [
+          {
+            "all": [
+              "issue of building plan sanction"
+            ],
+            "any": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          },
+          {
+            "all": [
+              "issue of building plan"
+            ],
+            "any": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ]
+          },
+          {
+            "all": [
+              "building plan sanction"
+            ],
+            "any": [
+              "ch",
+              "clubhouse",
+              "club house"
+            ],
+            "none": [
+              "drawings",
+              "details",
+              "documentation",
+              "documents",
+              "submission",
+              "package"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "RERA",
+        "match": [
+          "RERA"
+        ]
+      }
+    ]
+  }
+}

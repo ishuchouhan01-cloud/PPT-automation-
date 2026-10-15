@@ -1,0 +1,7 @@
+{
+  "_comment": "Copy this file to sharing.json and set a password. Password for the shared copy. Leave it empty and START.bat behaves exactly as before, with no login. Put something in it and the page asks for it. SHARE.bat refuses to open a public link while this is empty.",
+  "password": "",
+
+  "_comment2": "Leave blank to use cloudflared.exe from this folder, which SHARE.bat downloads for you. Set a full path if you keep it somewhere else.",
+  "cloudflared": ""
+}

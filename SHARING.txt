@@ -1,0 +1,130 @@
+================================================================================
+SHARING THIS COPY — a public link from your own laptop
+================================================================================
+
+START.bat  runs it for you alone, on this laptop. Nothing changes there.
+SHARE.bat  runs it AND puts a public web address in front of it, so somebody
+           else can open it from anywhere.
+
+Everything still runs on your laptop. No account, no sign-up, nothing to pay
+for, nothing installed on the tester's machine.
+
+
+--------------------------------------------------------------------------------
+FIRST TIME — two minutes
+--------------------------------------------------------------------------------
+
+1. Open  sharing.json  in Notepad.
+
+2. Put a password between the quotes on the "password" line:
+
+       "password": "Total-environment",
+
+   Pick something nobody would guess. This is the only thing standing between
+   your project schedules and whoever finds the address.
+
+3. Save the file and close Notepad.
+
+4. Double-click  SHARE.bat
+
+   The first run downloads one file, cloudflared.exe (about 60 MB), and takes a
+   minute. Every run after that is instant.
+
+5. The window prints something like:
+
+       ============================================================
+         PUBLIC LINK — anyone with this address can reach the app
+
+           https://odd-cat-plays-nicely.trycloudflare.com
+
+         Password:  weekly-review-2026
+       ============================================================
+
+6. Send that address to your tester. Send the password SEPARATELY — a different
+   channel from the link, so one intercepted message is not enough.
+
+7. Leave the window open. Closing it kills the link immediately.
+
+
+--------------------------------------------------------------------------------
+WHAT THE TESTER SEES
+--------------------------------------------------------------------------------
+
+A small page asking for the password, then the normal application. They upload
+their Excel export and generate a deck exactly as you would.
+
+They need nothing installed. Any browser, any machine, any network.
+
+
+--------------------------------------------------------------------------------
+THINGS TO KNOW BEFORE YOU SEND THE LINK
+--------------------------------------------------------------------------------
+
+THE ADDRESS CHANGES EVERY TIME.
+  Stop and restart SHARE.bat and you get a different one. That is how a free
+  quick tunnel works. If you need an address that stays the same, that needs a
+  (free) Cloudflare account and a domain — a different setup, ask and I'll do it.
+
+THE LINK DIES WITH THE WINDOW.
+  Close the window, shut the laptop, or lose your internet, and the address
+  stops working. Nothing is left running anywhere.
+
+EVERYTHING RUNS ON YOUR LAPTOP.
+  Cloudflare passes traffic through; it does not keep your files. Uploaded
+  exports and generated decks stay in the storage\ folder here, as always.
+
+ONE PASSWORD, SHARED.
+  Everyone who gets it has the same access, and you cannot tell them apart. For
+  a short test that is usually the right trade. If you need to know who did what,
+  or to cut off one person without changing everyone's password, say so and I'll
+  put a per-person list in instead.
+
+RESTARTING LOGS EVERYONE OUT.
+  Sessions are tied to a secret generated when the window starts. That is
+  deliberate: stopping the window really does end access.
+
+EIGHT WRONG GUESSES = A ONE-MINUTE LOCKOUT.
+  Per visitor. Public addresses do get probed automatically, and this blunts it.
+
+VERY LARGE UPLOADS MAY FAIL.
+  Cloudflare's free tier caps a single upload at about 100 MB. A previous deck
+  bigger than that will not get through the tunnel, though it works fine locally.
+
+NO PASSWORD, NO LINK.
+  SHARE.bat refuses to start if sharing.json has an empty password. By the time
+  a warning scrolled past, the link would already be live.
+
+
+--------------------------------------------------------------------------------
+TURNING IT OFF
+--------------------------------------------------------------------------------
+
+Close the SHARE.bat window. That is all — the address stops resolving at once.
+
+To go back to private use, double-click START.bat as before. If you also want
+to remove the password prompt locally, empty the "password" line in
+sharing.json again.
+
+
+--------------------------------------------------------------------------------
+IF SOMETHING GOES WRONG
+--------------------------------------------------------------------------------
+
+"No password is set."
+    sharing.json still has "password": "". Put one in and save.
+
+The download of cloudflared.exe fails.
+    A corporate proxy or firewall is blocking it. Download it by hand from
+      https://github.com/cloudflare/cloudflared/releases/latest
+    take the file named  cloudflared-windows-amd64.exe , rename it to
+    cloudflared.exe , and drop it in this folder. Then run SHARE.bat again.
+
+"cloudflared stopped before giving a link."
+    Usually no internet, or a firewall blocking outbound HTTPS. The application
+    itself is unaffected — open http://127.0.0.1:3000 locally to confirm.
+
+The tester sees the password page again after signing in.
+    The window was restarted. Send them the link again; the password is the same
+    but the address will have changed.
+
+Everything else: see TROUBLESHOOTING.txt.

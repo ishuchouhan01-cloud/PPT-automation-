@@ -1,0 +1,445 @@
+{
+  "red_flag_macro": [
+    [
+      "Land Acquisition",
+      7
+    ],
+    [
+      "Fund",
+      2
+    ],
+    [
+      "Design",
+      8
+    ],
+    [
+      "Statutory Approvals",
+      10
+    ],
+    [
+      "Marketing",
+      4
+    ],
+    [
+      "Sales",
+      5
+    ],
+    [
+      "Site Establishment",
+      4
+    ]
+  ],
+  "red_flag_subs": [
+    "MoU",
+    "TSR",
+    "Definitive Agreement",
+    "CLU",
+    "Conversion",
+    "Khata",
+    "Nala rerouting",
+    "Land Acquisition",
+    "Approvals",
+    "Design Brief",
+    "LOD 100",
+    "Estimate",
+    "LOD 200",
+    "BOQ v0",
+    "Approval",
+    "Marketing",
+    "Sales Lounge & Experience Centre",
+    "Height",
+    "LP/DP",
+    "Water",
+    "Power",
+    "MOEF",
+    "CFE",
+    "Fire",
+    "Other NOC",
+    "BP",
+    "RERA",
+    "Project Brochure",
+    "Project Walkthrogh",
+    "Product Walkthrogh",
+    "EDM/ Fyers",
+    "Campaign",
+    "Prjct Setup",
+    "Price Book",
+    "Hm Ln Aprv",
+    "Sales",
+    "Site Establishment",
+    "Sales Lounge & Experience Centre",
+    "Project Schedule",
+    "Org Structure + Mobilization"
+  ],
+  "column_keywords": {
+    "MoU": [
+      "mou"
+    ],
+    "TSR": [
+      "tsr",
+      "title search"
+    ],
+    "Definitive Agreement": [
+      "definitive agreement",
+      "jda",
+      "sale deed",
+      "registered"
+    ],
+    "CLU": [
+      "clu",
+      "change of land use",
+      "land use"
+    ],
+    "Conversion": [
+      "conversion",
+      "converted"
+    ],
+    "Khata": [
+      "khata"
+    ],
+    "Nala rerouting": [
+      "nala"
+    ],
+    "Land Acquisition": [
+      "land acquisition",
+      "acquisition"
+    ],
+    "Approvals": [
+      "approval"
+    ],
+    "Design Brief": [
+      "design brief"
+    ],
+    "LOD 100": [
+      "lod 100",
+      "lod100",
+      "schematic"
+    ],
+    "Estimate": [
+      "estimate",
+      "boq",
+      "budget"
+    ],
+    "LOD 200": [
+      "lod 200",
+      "lod200",
+      "pre construction"
+    ],
+    "BOQ v0": [
+      "boq"
+    ],
+    "Approval": [
+      "approval"
+    ],
+    "Marketing": [
+      "marketing"
+    ],
+    "Sales Lounge & Experience Centre": [
+      "sales lounge",
+      "experience centre",
+      "experience center"
+    ],
+    "Height": [
+      "height",
+      "fsi"
+    ],
+    "LP/DP": [
+      "lp/dp",
+      "layout plan",
+      "development plan"
+    ],
+    "Water": [
+      "water noc",
+      "water"
+    ],
+    "Power": [
+      "power",
+      "electricity",
+      "bescom"
+    ],
+    "MOEF": [
+      "moef",
+      "environment"
+    ],
+    "CFE": [
+      "cfe",
+      "consent for establishment"
+    ],
+    "Fire": [
+      "fire noc",
+      "fire"
+    ],
+    "Other NOC": [
+      "noc"
+    ],
+    "BP": [
+      "building plan",
+      "building licence",
+      "building permit",
+      "bp "
+    ],
+    "RERA": [
+      "rera"
+    ],
+    "Project Brochure": [
+      "brochure"
+    ],
+    "Project Walkthrogh": [
+      "project walkthrough",
+      "walkthrough"
+    ],
+    "Product Walkthrogh": [
+      "product walkthrough"
+    ],
+    "EDM/ Fyers": [
+      "edm",
+      "flyer",
+      "flyers"
+    ],
+    "Campaign": [
+      "campaign"
+    ],
+    "Prjct Setup": [
+      "project setup",
+      "prjct setup",
+      "crm"
+    ],
+    "Price Book": [
+      "price book"
+    ],
+    "Hm Ln Aprv": [
+      "home loan",
+      "loan approval",
+      "apf"
+    ],
+    "Sales": [
+      "sales launch",
+      "sales"
+    ],
+    "Site Establishment": [
+      "site establishment"
+    ],
+    "Project Schedule": [
+      "project schedule",
+      "programme",
+      "schedule"
+    ],
+    "Org Structure + Mobilization": [
+      "mobilization",
+      "mobilisation",
+      "org structure",
+      "manpower"
+    ]
+  },
+  "approvals": {
+    "Sarjapur Road": [
+      "AAI NOC",
+      "HAL/IAF NOC",
+      "Water NOC [South Block]",
+      "Power NOC [South Block]",
+      "Development Plan [South Block]",
+      "Environmental Clearance [South Block]",
+      "CFE [South Block]",
+      "Fire NOC [South Block]",
+      "Building Plan Sanction [South Block]",
+      "RERA [South Block]",
+      "RERA"
+    ],
+    "Nandi Hills MH": [
+      "Water NOC",
+      "Power NOC",
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Building Plan-Residential",
+      "RERA",
+      "Green Building Pre-ceritification"
+    ],
+    "TR Mills -Chamrajpet": [
+      "AAI NOC",
+      "HAL NOC",
+      "IAF & GFTS NOC",
+      "Water NOC",
+      "Power NOC",
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Fire NOC",
+      "Building Plan-Residential",
+      "Building Plan-Club House",
+      "RERA"
+    ],
+    "Byatarayanapura": [
+      "AAI NOC",
+      "HAL NOC",
+      "IAF & GFTS NOC",
+      "Water NOC",
+      "Power NOC",
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Fire NOC",
+      "Building Plan-Residential",
+      "Building Plan-Club House",
+      "RERA"
+    ],
+    "TMFT Ph3": [
+      "Water NOC",
+      "Power NOC",
+      "CFE",
+      "Fire NOC",
+      "Building Plan - Resdential",
+      "RERA",
+      "Green Building / LEED Ceritification"
+    ],
+    "Varthur": [
+      "AAI NOC",
+      "HAL/IAF NOC",
+      "Water NOC",
+      "Power NOC",
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Fire NOC",
+      "Building Plan-Residential",
+      "Building Plan-Commercial",
+      "RERA",
+      "Green Building / LEED Ceritification"
+    ],
+    "Nandi Hills Sultanpet": [
+      "Water NOC",
+      "Power NOC",
+      "Development Plan",
+      "CFE",
+      "Building Plan-Residential",
+      "RERA",
+      "Green Building certification"
+    ],
+    "Blue in Green": [
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Fire NOC",
+      "Building Plan-Residential",
+      "RERA",
+      "Green Building certification"
+    ],
+    "One tiny flower": [
+      "Water NOC",
+      "Power NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Residential",
+      "Building Plan-Club House",
+      "Building Plan-Commercial"
+    ],
+    "Ambegaon": [
+      "Water NOC",
+      "Power NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Club House"
+    ],
+    "Harohalli": [
+      "Railway NOC",
+      "HAL/IAF NOC",
+      "Water NOC",
+      "Power NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Club House"
+    ],
+    "Alibaug": [
+      "Water NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Club House"
+    ],
+    "Violet Hill": [
+      "Drainage NOC",
+      "Dry waste collection & disposal NOC",
+      "Water NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Club House"
+    ],
+    "Vaderahalli": [
+      "AAI NOC",
+      "Power NOC",
+      "Water NOC",
+      "Fire NOC",
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Building Plan-Residential",
+      "Building Plan-Commercial",
+      "RERA"
+    ],
+    "Acharalahalli": [
+      "Water NOC",
+      "Power NOC",
+      "Development Plan",
+      "CFE",
+      "Building Plan-Residential",
+      "RERA"
+    ],
+    "Savakanahalli": [
+      "Water NOC",
+      "Power NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Club House"
+    ],
+    "ITQE-Ph 3": [
+      "HAL/IAF NOC",
+      "Power NOC",
+      "AAI NOC",
+      "Water NOC",
+      "Fire NOC",
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Building Plan-Residential",
+      "RERA",
+      "RERA"
+    ],
+    "OTR - Ph2": [
+      "Power NOC",
+      "Water NOC",
+      "Development Plan",
+      "Environmental Clearance",
+      "CFE",
+      "Building Plan-Residential",
+      "RERA",
+      "RERA"
+    ],
+    "Sarjapur 330a": [
+      "Water NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Club House"
+    ],
+    "Vijayapura": [
+      "Power NOC",
+      "Water NOC",
+      "Layout Plan",
+      "CFE",
+      "Building Plan-Club House",
+      "RERA"
+    ],
+    "ShreeGaon ": [
+      "Water NOC",
+      "Layout Plan",
+      "CFE",
+      "RERA",
+      "Building Plan-Club House"
+    ]
+  }
+}

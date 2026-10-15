@@ -1,0 +1,69 @@
+HOW TO USE
+==========
+
+1. Extract the ZIP to a folder you can write to (Documents is fine; avoid a read-only
+   network share, because the application saves a copy of each deck beside itself).
+
+2. Double-click START.bat. A black window opens and stays open. Your browser opens at
+   http://127.0.0.1:3000 — if it does not, type that address in yourself.
+
+3. Choose the PROJECT TYPE at the top of the page:
+       Launch & Design      or      Design & Build
+   The upload boxes change to match your choice.
+
+4. Upload the files for that project type — drag and drop, or click a box.
+
+5. Confirm the project the application detected, and enter the PROJECT CODE.
+   Entering the code matters: it is how the application tells your project apart from
+   every other project in the Summary Dashboard.
+
+6. Click Generate. It takes a few seconds to a minute.
+
+7. Click Download PPTX.
+
+
+WHICH FILES TO UPLOAD
+---------------------
+
+LAUNCH & DESIGN
+  ASTA Excel export (.xlsx/.xlsm)      REQUIRED. The schedule export for this project.
+  Summary Dashboard (.xlsx)            Needed for Red Flag Summary, Key Focus Area and
+                                       the Tracker & Schedule slide.
+  Previous Weekly PPT (.pptx)          Supplies the cover, Land Acquisition, Master Plan
+                                       and any extra slides carried forward.
+  Land Acquisition update              Only if that slide changed this week. A .pptx
+                                       containing the new slide, or an image. Left out,
+                                       it carries over from the previous deck.
+
+DESIGN & BUILD
+  Design & Build Excel export view     REQUIRED, and the ONLY schedule file. One export
+                                       view holding this project's Design and/or
+                                       Construction schedule data. The Design and
+                                       Construction branches are found inside it, so there
+                                       is no separate construction upload:
+                                         - a "Design" branch      -> Project Overview
+                                         - a "Construction" branch -> Project Overview -
+                                           Construction, and Schedule - Construction
+                                         - both branches           -> both slides, 4A and 4B
+                                         - construction absent     -> those slides are simply
+                                           left out. Nothing else is asked for.
+  Summary Dashboard (.xlsx)            Needed for Red Flag Summary, Key Focus Area and
+                                       both timelines.
+  Previous Weekly PPT (.pptx)          Supplies the cover and the Site Progress pages.
+                                       Site photographs are never generated — they can
+                                       only come from your previous deck.
+
+
+WHAT YOU GET
+------------
+An editable .pptx, plus a validation report listing what was built, what was left out and
+why. A section whose input is missing is left out of the deck AND out of Contents rather
+than being filled with something else.
+
+The cover's "Weekly Update" date is set from the reporting date for this run, not from the
+date on the previous deck.
+
+
+TO STOP
+-------
+Close the black window, or press Ctrl+C in it.
